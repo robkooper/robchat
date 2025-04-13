@@ -445,7 +445,7 @@ Available endpoints:
 robchat/
 ├── app.py           # Main FastAPI application
 ├── static/          # Static files
-│   ├── login.html   # Main entry point and login page
+│   ├── login.html   # Login page
 │   ├── chat.html    # Chat interface
 │   ├── styles.css   # Global styles
 │   ├── app.js       # Main application logic
@@ -461,9 +461,15 @@ robchat/
 │       └── {project}/
 │           └── chroma_db/  # Vector store
 ├── tests/          # Test files
+│   ├── test_auth.py    # Authentication tests
+│   ├── test_files.py   # File operation tests
+│   └── test_projects.py # Project access control tests
 ├── config.yaml     # Application configuration
 ├── config.example.yaml  # Example configuration
+├── users.yaml      # User authentication configuration
+├── users.example.yaml  # Example user configuration
 ├── requirements.txt # Python dependencies
+├── .gitignore      # Git ignore rules
 └── CHANGELOG.md    # Version history
 ```
 
