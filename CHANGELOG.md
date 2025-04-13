@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TL;DR section in README for quick setup
+- Clarification about configuration files in README
 - Initial release of RobChat
 - Support for multiple document types (PDF, DOCX, TXT, HTML, PPTX, XLSX)
 - RAG pipeline with document chunking and indexing
@@ -34,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated ChromaDB to use a single collection named "robchat" instead of per-user/project collections
 
 ### Changed
+- Updated README to clarify configuration file setup process
 - Updated password hashing to use bcrypt directly
 - Improved error handling in authentication
 - Fixed test cases to work with authentication
