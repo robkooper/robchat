@@ -204,34 +204,83 @@ The example scripts demonstrate three types of queries:
 
 ## API Endpoints
 
-All endpoints follow the RESTful pattern `/api/{user}/{project}` where:
+All endpoints require authentication using a Bearer token. To get a token:
+
+- `POST /token`
+  - Authenticate and get access token
+  - Body (form data): `username` and `password`
+  - Returns: `{"access_token": "token", "token_type": "bearer"}`
+
+All other endpoints follow the RESTful pattern `/api/{user}/{project}` where:
 - `{user}`: The username
 - `{project}`: The project name
+- All requests must include the header: `Authorization: Bearer <token>`
 
 Available endpoints:
 
 - `GET /api/{user}/projects`
-  - Lists all projects for a user
+  - Lists all projects for a user and the current active project
   - Returns: `{"projects": ["project1", "project2"], "current_project": "project1"}`
-
-- `POST /api/{user}/switch`
-  - Switch to a different project
-  - Body: `{"user": "username", "project": "project_name"}`
-  - Returns: Success message and project directory info
+  - Error responses:
+    - 401: Not authenticated
+    - 403: Cannot access another user's projects
 
 - `GET /api/{user}/{project}/files`
   - Lists all files in the project
   - Returns: `{"files": ["file1.pdf", "file2.txt"]}`
+  - Error responses:
+    - 401: Not authenticated
+    - 403: Cannot access another user's files
 
 - `POST /api/{user}/{project}/files`
   - Upload a new file to the project
   - Accepts: multipart/form-data with file
-  - Returns: File processing info including chunk count
+  - Supported file types: .pdf, .docx, .txt, .html, .pptx, .xlsx
+  - Returns: `{"filename": "file.txt", "chunks": 5, "initial_count": 0, "final_count": 5, "replaced_existing": false}`
+  - Error responses:
+    - 400: Unsupported file type
+    - 401: Not authenticated
+    - 403: Cannot upload to another user's project
+    - 500: File processing error
+
+- `DELETE /api/{user}/{project}/files/{filename}`
+  - Delete a file from the project
+  - Returns: `{"status": "success", "message": "File <filename> deleted successfully"}`
+  - Error responses:
+    - 401: Not authenticated
+    - 403: Cannot delete another user's files
+    - 404: File not found
+    - 500: Deletion error
 
 - `POST /api/{user}/{project}/query`
   - Query the project's documents
   - Body: `{"text": "your question here"}`
-  - Returns: AI-generated answer with source citations
+  - Returns: 
+    ```json
+    {
+      "answer": "AI-generated answer",
+      "sources": [
+        {
+          "number": 1,
+          "file": "source1.pdf",
+          "text": "Full source text",
+          "preview": "First 150 characters..."
+        }
+      ],
+      "metrics": {
+        "time_seconds": 1.23,
+        "total_tokens": 100,
+        "input_tokens": 20,
+        "output_tokens": 80
+      }
+    }
+    ```
+  - Error responses:
+    - 401: Not authenticated
+    - 403: Cannot query another user's documents
+    - 404: No documents found
+    - 422: Invalid query format
+    - 500: Query processing error
 
 ## Project Structure
 

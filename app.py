@@ -372,11 +372,6 @@ class Query(BaseModel):
 class FileList(BaseModel):
     files: List[str]
 
-class UserProjectSwitch(BaseModel):
-    """Model for switching user and project."""
-    user: str
-    project: str
-
 class UserProjects(BaseModel):
     """Model for user projects response."""
     projects: List[str]  # List of all projects
@@ -560,6 +555,13 @@ async def list_files(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     """List all files in the project directory."""
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Cannot access files of another user"
+        )
+        
     project_dir = os.path.join(DATA_DIR, user, project)
     if not os.path.exists(project_dir):
         return {"files": []}
@@ -587,6 +589,13 @@ async def create_file(
     Raises:
         HTTPException: For unsupported file types or processing errors
     """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Cannot upload files for another user"
+        )
+        
     file_path = None
     replaced_existing = False
     try:
@@ -687,41 +696,6 @@ async def create_file(
         logger.error(f"Error traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Unexpected error during file upload: {str(e)}")
 
-@app.post("/api/{user}/switch")
-async def switch_user_project(
-    switch: UserProjectSwitch,
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    """
-    Switch to a different user and project combination.
-    Creates the necessary directories if they don't exist.
-    
-    Args:
-        switch (UserProjectSwitch): The user and project to switch to
-        
-    Returns:
-        dict: Status message and the new directories created
-    """
-    try:
-        # Create the directory structure if it doesn't exist
-        project_dir = os.path.join(DATA_DIR, switch.user, switch.project)
-        os.makedirs(project_dir, exist_ok=True)
-        
-        # Initialize a new vector store for this user/project if it doesn't exist
-        vector_store = get_vector_store(switch.user, switch.project, load_documents=True)
-        
-        return {
-            "status": "success",
-            "message": f"Switched to user '{switch.user}' and project '{switch.project}'",
-            "project_directory": project_dir
-        }
-    except Exception as e:
-        logger.error(f"Error switching user/project: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to switch user/project: {str(e)}"
-        )
-
 @app.post("/api/{user}/{project}/query")
 async def query_rag(
     query: Query, 
@@ -740,6 +714,13 @@ async def query_rag(
     Returns:
         dict: The answer and sources
     """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Cannot query another user's documents"
+        )
+        
     try:
         start_time = time.time()
         
@@ -862,6 +843,13 @@ async def get_user_projects(
     Returns:
         UserProjects: List of all projects and current project
     """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Cannot access projects of another user"
+        )
+        
     try:
         user_dir = os.path.join(DATA_DIR, user)
         if not os.path.exists(user_dir):
@@ -909,6 +897,13 @@ async def delete_file(
     Returns:
         dict: Status message
     """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Cannot delete files of another user"
+        )
+        
     try:
         # Get the project path
         project_path = os.path.join(DATA_DIR, user, project)

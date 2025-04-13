@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User authentication system with JWT tokens
 - Theme selection with light, dark, and auto modes
 - Enter key support for login form submission
+- Comprehensive API documentation in README
+- Detailed error response documentation
 
 ### Changed
 - Updated password hashing to use bcrypt directly
@@ -34,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated API endpoints to include user authentication
 - Improved error handling and user feedback
 - Enhanced login form with keyboard navigation support
+- Reorganized test files into logical groups:
+  - test_auth.py: Authentication tests
+  - test_projects.py: Project access control tests
+  - test_files.py: File operation tests
+- Updated API documentation with detailed response formats and error codes
 
 ### Fixed
 - Fixed password verification in authentication
@@ -41,20 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed file upload handling with authentication
 - Fixed project switching with user authentication
 - Fixed login form submission handling
+- Fixed test assertions to match actual API responses
+- Fixed error message consistency across endpoints
 
 ### Removed
 - Removed React-based frontend components
 - Removed frontend build system
 - Removed unnecessary frontend dependencies
-
-## [1.0.0]
-
-### Added
-- Initial release of RobChat
-- Support for multiple document types (PDF, DOCX, TXT, HTML, PPTX, XLSX)
-- RAG pipeline with document chunking and indexing
-- FastAPI backend with RESTful API endpoints
-- React-based frontend interface
-- Configuration system with config.yaml
-- Project-based document organization
-- Source citation in responses 
+- Removed `/api/{user}/switch` endpoint and associated tests
+- Removed redundant test cases 
