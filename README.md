@@ -138,15 +138,22 @@ Available endpoints:
 ```
 robchat/
 ├── app.py           # Main FastAPI application
-├── frontend/        # Web interface
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
+├── static/          # Static files
+│   ├── login.html   # Main entry point and login page
+│   ├── chat.html    # Chat interface
+│   ├── styles.css   # Global styles
+│   ├── app.js       # Main application logic
+│   ├── login.js     # Login functionality
+│   └── favicon.svg  # Site icon
 ├── data/           # Document storage
 │   └── {user}/
 │       └── {project}/
 │           └── chroma_db/  # Vector store
-└── requirements.txt
+├── tests/          # Test files
+├── config.yaml     # Application configuration
+├── config.example.yaml  # Example configuration
+├── requirements.txt # Python dependencies
+└── CHANGELOG.md    # Version history
 ```
 
 ## Error Handling

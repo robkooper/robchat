@@ -1,4 +1,56 @@
+// Helper function to get the auth token
+function getAuthToken() {
+    return localStorage.getItem('access_token');
+}
+
+// Helper function to check if user is authenticated
+function isAuthenticated() {
+    return !!getAuthToken();
+}
+
+// Helper function to make authenticated requests
+async function fetchWithAuth(url, options = {}) {
+    const token = getAuthToken();
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+    
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+    };
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    if (response.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('access_token');
+        window.location.href = '/';
+        return;
+    }
+    
+    return response;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+        window.location.href = '/';
+        return;
+    }
+
+    // Get username from JWT token
+    const token = getAuthToken();
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+    const username = tokenPayload.sub;
+    
+    // Update username display
+    document.getElementById('usernameDisplay').textContent = username;
+    
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const chatMessages = document.getElementById('chatMessages');
@@ -16,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const newProjectModalElement = document.getElementById('newProjectModal');
 
     // Get username from the UI
-    const username = userDropdown.textContent.trim();
     let currentProject = "";
 
     // Clear input and set focus when modal is shown
@@ -144,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const thinkingMessage = addMessage('', 'bot', true);
 
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -184,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadProjects() {
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/projects`);
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/projects`);
             const data = await response.json();
             
             // Clear existing projects
@@ -222,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function switchProject(project) {
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/switch`, {
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/switch`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -249,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
             if (!response.ok) {
                 console.error('Error loading files:', response.status, response.statusText);
                 displayFiles([]); // Display empty list on error
@@ -296,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
                 method: 'DELETE'
             });
 
@@ -320,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
+            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
                 method: 'POST',
                 body: formData,
             });
@@ -339,8 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleLogout() {
-        // For now, just reload the page
-        window.location.reload();
+        // Remove the token and reload the page
+        localStorage.removeItem('access_token');
+        window.location.href = '/';
     }
 
     async function createNewProject() {

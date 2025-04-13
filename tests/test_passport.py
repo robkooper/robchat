@@ -1,8 +1,10 @@
 import os
 import shutil
 import logging
+import bcrypt
 from fastapi.testclient import TestClient
-from app import app, DATA_DIR
+from app import app, DATA_DIR, fake_users_db, create_access_token
+from datetime import timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -14,6 +16,13 @@ class TestPassportQuery:
         self.client = TestClient(app)
         self.test_user = "test_user"
         self.test_project = "test_project"
+        
+        # Add test user to fake_users_db
+        fake_users_db[self.test_user] = {
+            "username": self.test_user,
+            "hashed_password": bcrypt.hashpw("test".encode('utf-8'), bcrypt.gensalt()),
+            "disabled": False,
+        }
         
         # Create test data directory
         self.test_dir = os.path.join(DATA_DIR, self.test_user, self.test_project)
@@ -41,28 +50,38 @@ class TestPassportQuery:
         self.test_file = os.path.join(self.test_dir, "passport_info.txt")
         with open(self.test_file, "w") as f:
             f.write(self.test_content)
+            
+        # Get auth token for test user
+        access_token = create_access_token(
+            data={"sub": self.test_user},
+            expires_delta=timedelta(minutes=30)
+        )
+        self.headers = {"Authorization": f"Bearer {access_token}"}
 
     def teardown_method(self):
         """Clean up test environment"""
         if os.path.exists(os.path.join(DATA_DIR, self.test_user)):
             shutil.rmtree(os.path.join(DATA_DIR, self.test_user))
+        # Remove test user from fake_users_db
+        if self.test_user in fake_users_db:
+            del fake_users_db[self.test_user]
 
     def test_passport_query(self, capsys):
         """Test querying about passport requirements"""
         # First, ensure the file is processed into the vector store
         with open(self.test_file, "rb") as f:
             response = self.client.post(
-                "/upload",
+                f"/api/{self.test_user}/{self.test_project}/files",
                 files={"file": ("passport_info.txt", f, "text/plain")},
-                params={"user": self.test_user, "project": self.test_project}
+                headers=self.headers
             )
         assert response.status_code == 200
         
         # Now query about passport requirements
         query_response = self.client.post(
-            "/query",
+            f"/api/{self.test_user}/{self.test_project}/query",
             json={"text": "what is needed for a passport"},
-            params={"user": self.test_user, "project": self.test_project}
+            headers=self.headers
         )
         
         assert query_response.status_code == 200

@@ -15,13 +15,13 @@ The system uses:
 - FastAPI for the web API
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Annotated
 import os
 import shutil
 from pathlib import Path
@@ -53,6 +53,99 @@ from langchain.memory import ConversationBufferMemory
 import yaml
 import pypdf
 import traceback
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import bcrypt
+from passlib.context import CryptContext
+
+# Authentication models
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+class User(BaseModel):
+    username: str
+    disabled: Optional[bool] = None
+
+class UserInDB(User):
+    hashed_password: str
+
+# Authentication settings
+SECRET_KEY = "your-secret-key-here"  # In production, use a secure secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def get_password_hash(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(plain_password, hashed_password):
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
+
+# Mock user database - replace with real database in production
+fake_users_db = {
+    "test": {
+        "username": "test",
+        "hashed_password": get_password_hash("test"),
+        "disabled": False,
+    }
+}
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(fake_users_db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
 
 # Load configuration first, before setting up logging
 def load_config(config_path: str = "config.yaml") -> Dict[Any, Any]:
@@ -150,13 +243,12 @@ def retry_with_fallback(max_attempts=3):
 
 app = FastAPI()
 
-# Setup frontend paths
-frontend_path = os.path.join(os.path.dirname(__file__), "frontend")
-index_path = os.path.join(frontend_path, "chat.html")
+# Setup static paths
+static_path = os.path.join(os.path.dirname(__file__), "static")
 
-# Mount the frontend static files
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+# Mount the static files
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 # CORS middleware
 app.add_middleware(
@@ -291,11 +383,54 @@ class UserProjects(BaseModel):
     current_project: str
 
 # API Endpoints
+@app.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()] = None,
+    username: str = Form(None),
+    password: str = Form(None)
+):
+    # Handle both OAuth2 form and regular form data
+    if form_data:
+        username = form_data.username
+        password = form_data.password
+    elif not username or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username and password are required"
+        )
+
+    user = authenticate_user(fake_users_db, username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 @app.get("/")
 async def read_root():
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "Welcome to RobChat"}
+    login_path = os.path.join(static_path, "login.html")
+    if not os.path.exists(login_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Login page not found"
+        )
+    return FileResponse(login_path)
+
+@app.get("/chat")
+async def read_chat():
+    chat_path = os.path.join(static_path, "chat.html")
+    if not os.path.exists(chat_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat page not found"
+        )
+    return FileResponse(chat_path)
 
 def parse_pdf(file_path: str) -> str:
     """
@@ -419,7 +554,11 @@ def process_file_for_vectorstore(file_path: str) -> List[str]:
         raise
 
 @app.get("/api/{user}/{project}/files")
-async def list_files(user: str, project: str):
+async def list_files(
+    user: str, 
+    project: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     """List all files in the project directory."""
     project_dir = os.path.join(DATA_DIR, user, project)
     if not os.path.exists(project_dir):
@@ -431,6 +570,7 @@ async def list_files(user: str, project: str):
 async def create_file(
     user: str,
     project: str,
+    current_user: Annotated[User, Depends(get_current_active_user)],
     file: UploadFile = File(...)
 ):
     """
@@ -548,7 +688,10 @@ async def create_file(
         raise HTTPException(status_code=500, detail=f"Unexpected error during file upload: {str(e)}")
 
 @app.post("/api/{user}/switch")
-async def switch_user_project(switch: UserProjectSwitch):
+async def switch_user_project(
+    switch: UserProjectSwitch,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     """
     Switch to a different user and project combination.
     Creates the necessary directories if they don't exist.
@@ -580,7 +723,12 @@ async def switch_user_project(switch: UserProjectSwitch):
         )
 
 @app.post("/api/{user}/{project}/query")
-async def query_rag(query: Query, user: str, project: str):
+async def query_rag(
+    query: Query, 
+    user: str, 
+    project: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     """
     Process a natural language query using RAG.
     
@@ -701,7 +849,10 @@ Answer: Let me help you with that."""
         )
 
 @app.get("/api/{user}/projects")
-async def get_user_projects(user: str):
+async def get_user_projects(
+    user: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     """
     Get all projects for a user and their current selected project.
     
@@ -741,7 +892,12 @@ async def get_user_projects(user: str):
         )
 
 @app.delete("/api/{user}/{project}/files/{filename}")
-async def delete_file(user: str, project: str, filename: str):
+async def delete_file(
+    user: str, 
+    project: str, 
+    filename: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     """
     Delete a file and its content from the vector store.
     
