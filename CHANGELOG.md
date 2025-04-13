@@ -15,4 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - React-based frontend interface
 - Configuration system with config.yaml
 - Project-based document organization
+- Source citation in responses
+- Example folder with API usage demonstrations:
+  - Python script (test_api.py) for API interaction
+  - Shell script (test_api.sh) for API interaction
+  - Sample documents about quantum computing and AI
+  - Documentation on how to use the examples
+
+### Changed
+- Updated password hashing to use bcrypt directly
+- Improved error handling in authentication
+- Fixed test cases to work with authentication
+
+### Fixed
+- Fixed password verification in authentication
+- Fixed test cases to handle authentication properly
+
+## [1.0.0]
+
+### Added
+- Initial release of RobChat
+- Support for multiple document types (PDF, DOCX, TXT, HTML, PPTX, XLSX)
+- RAG pipeline with document chunking and indexing
+- FastAPI backend with RESTful API endpoints
+- React-based frontend interface
+- Configuration system with config.yaml
+- Project-based document organization
 - Source citation in responses 
