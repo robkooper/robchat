@@ -334,7 +334,13 @@ All endpoints require authentication using a Bearer token. To get a token:
 - `POST /token`
   - Authenticate and get access token
   - Body (form data): `username` and `password`
-  - Returns: `{"access_token": "token", "token_type": "bearer"}`
+  - Returns:
+    ```json
+    {
+      "access_token": "token",
+      "token_type": "bearer"
+    }
+    ```
 
 All other endpoints follow the RESTful pattern `/api/{user}/{project}` where:
 - `{user}`: The username
@@ -345,14 +351,25 @@ Available endpoints:
 
 - `GET /api/{user}/projects`
   - Lists all projects for a user and the current active project
-  - Returns: `{"projects": ["project1", "project2"], "current_project": "project1"}`
+  - Returns:
+    ```json
+    {
+      "projects": ["project1", "project2"],
+      "current_project": "project1"
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot access another user's projects
 
 - `GET /api/{user}/{project}/files`
   - Lists all files in the project
-  - Returns: `{"files": ["file1.pdf", "file2.txt"]}`
+  - Returns:
+    ```json
+    {
+      "files": ["file1.pdf", "file2.txt"]
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot access another user's files
@@ -361,7 +378,16 @@ Available endpoints:
   - Upload a new file to the project
   - Accepts: multipart/form-data with file
   - Supported file types: .pdf, .docx, .txt, .html, .pptx, .xlsx
-  - Returns: `{"filename": "file.txt", "chunks": 5, "initial_count": 0, "final_count": 5, "replaced_existing": false}`
+  - Returns:
+    ```json
+    {
+      "filename": "file.txt",
+      "chunks": 5,
+      "initial_count": 0,
+      "final_count": 5,
+      "replaced_existing": false
+    }
+    ```
   - Error responses:
     - 400: Unsupported file type
     - 401: Not authenticated
@@ -370,7 +396,13 @@ Available endpoints:
 
 - `DELETE /api/{user}/{project}/files/{filename}`
   - Delete a file from the project
-  - Returns: `{"status": "success", "message": "File <filename> deleted successfully"}`
+  - Returns:
+    ```json
+    {
+      "status": "success",
+      "message": "File <filename> deleted successfully"
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot delete another user's files
@@ -380,7 +412,7 @@ Available endpoints:
 - `POST /api/{user}/{project}/query`
   - Query the project's documents
   - Body: `{"text": "your question here"}`
-  - Returns: 
+  - Returns:
     ```json
     {
       "answer": "AI-generated answer",
