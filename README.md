@@ -49,7 +49,8 @@ A powerful Retrieval-Augmented Generation (RAG) system for document question ans
   - sentence-transformers for embeddings
   - ChromaDB for vector storage
   - FastAPI for web API
-  - React-based frontend
+  - Bootstrap for responsive UI
+  - Vanilla JavaScript for frontend interactivity
 
 ## Requirements
 
