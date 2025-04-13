@@ -52,6 +52,11 @@ A powerful Retrieval-Augmented Generation (RAG) system for document question ans
    pip install -r requirements.txt
    ```
 
+4. Start the server:
+   ```bash
+   uvicorn app:app --reload
+   ```
+
 ## Configuration
 
 The application is configured using a `config.yaml` file. A template is provided in `config.example.yaml`. Copy this file to `config.yaml` and customize it for your environment:
@@ -89,12 +94,52 @@ The configuration file contains the following sections:
 - `chunk_overlap`: Overlap between chunks
 - `retrieval_k`: Number of chunks to retrieve per query
 
+## Examples
+
+The `example` folder contains demonstration scripts and sample documents to help you get started with the API:
+
+### Sample Documents
+- `quantum_computing.txt`: Information about quantum computing concepts and applications
+- `artificial_intelligence.txt`: Overview of AI technologies and their applications
+
+### API Usage Examples
+
+#### Python Example
+The `test_api.py` script demonstrates how to:
+- Authenticate with the API
+- Upload documents
+- Query the documents
+- Handle responses
+
+Run the Python example:
+```bash
+cd example
+python test_api.py
+```
+
+#### Shell Script Example
+The `test_api.sh` script provides the same functionality using curl commands:
+
+Run the shell script:
+```bash
+cd example
+./test_api.sh
+```
+
+Note: The shell script requires `curl` and `jq` to be installed.
+
+### Example Queries
+The example scripts demonstrate three types of queries:
+1. Specific topic queries (e.g., "What are the key concepts in quantum computing?")
+2. Application queries (e.g., "What are the main applications of AI?")
+3. Combined topic queries (e.g., "How can AI help with quantum computing?")
+
 ## Usage
 
 1. Start the server:
-    ```bash
-    python app.py
-    ```
+     ```bash
+     uvicorn app:app --reload
+     ```
 
 2. Open your browser to `http://localhost:8000`
 
@@ -145,6 +190,11 @@ robchat/
 │   ├── app.js       # Main application logic
 │   ├── login.js     # Login functionality
 │   └── favicon.svg  # Site icon
+├── example/         # Example scripts and documents
+│   ├── test_api.py  # Python API example
+│   ├── test_api.sh  # Shell API example
+│   ├── quantum_computing.txt    # Sample document
+│   └── artificial_intelligence.txt  # Sample document
 ├── data/           # Document storage
 │   └── {user}/
 │       └── {project}/
