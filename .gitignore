@@ -37,6 +37,7 @@ env/
 data/
 *.log
 config.yaml
+users.yaml
 chroma_db/
 *.pdf
 *.docx

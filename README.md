@@ -59,13 +59,107 @@ A powerful Retrieval-Augmented Generation (RAG) system for document question ans
 
 ## Configuration
 
-The application is configured using a `config.yaml` file. A template is provided in `config.example.yaml`. Copy this file to `config.yaml` and customize it for your environment:
+The application is configured using YAML files:
 
-```bash
-cp config.example.yaml config.yaml
+1. `config.yaml` - Main configuration file
+2. `users.yaml` - User authentication configuration
+
+### Configuration Files
+
+#### config.yaml
+The main configuration file contains settings for:
+- Data storage
+- Server configuration
+- Model settings
+- Vector store settings
+- Authentication settings
+- RAG settings
+
+Example configuration:
+```yaml
+# Data Storage
+data:
+  base_directory: "data"
+  supported_extensions:
+    - ".pdf"
+    - ".docx"
+    - ".txt"
+    - ".html"
+    - ".pptx"
+    - ".xlsx"
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  log_level: "info"
+
+# Authentication Configuration
+auth:
+  secret_key: "your-secret-key-here"  # Change this in production!
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# Models Configuration
+models:
+  llm:
+    repo_id: "TheBloke/Llama-2-7B-Chat-GGUF"
+    filename: "llama-2-7b-chat.Q4_K_M.gguf"
+    temperature: 0.7
+    max_tokens: 2000
+    context_window: 4096
+    top_p: 0.95
+    n_batch: 512
+  embeddings:
+    model_name: "sentence-transformers/all-MiniLM-L6-v2"
+    model_kwargs:
+      device: "cpu"
+
+# Vector Store Configuration
+vector_store:
+  chunk_size: 1000
+  chunk_overlap: 200
+  retrieval_k: 4
+
+# RAG Configuration
+rag:
+  qa_template: |
+    Use the following pieces of context to answer the question at the end.
+    If you don't know the answer based on the context, just say "I don't know" - do not try to make up an answer.
+    If you do know the answer, provide it clearly and concisely, incorporating relevant information from all provided sources.
+    Make sure to use all relevant information from the sources to give a complete answer.
+
+    Context:
+    {context}
+
+    Question: {question}
+
+    Answer: Let me help you with that.
 ```
 
-The configuration file contains the following sections:
+#### users.yaml
+The users configuration file contains user authentication information. This file should be kept secure and not committed to version control. A template is provided in `users.example.yaml`.
+
+Example configuration:
+```yaml
+admin:
+  email: admin@example.com
+  fullname: Administrator
+  admin: true
+  password: $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW  # password: secret
+test:
+  email: test@example.com
+  fullname: Test User
+  admin: false
+  password: $2b$12$UCqQEFTUM/fTwhlnSa9c8OLbUrrmWv1tfyR/mHh7eWPdAxvDP/JKK  # password: test
+```
+
+To set up users:
+1. Copy `users.example.yaml` to `users.yaml`
+2. Update the user information as needed
+3. Generate new password hashes using the `get_password_hash` function in `app.py`
+
+Note: The `users.yaml` file is automatically added to `.gitignore` to prevent accidental commits of sensitive information.
 
 ### Data Storage
 - `base_directory`: Directory where uploaded files will be stored

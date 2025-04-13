@@ -1,0 +1,10 @@
+admin:
+  email: admin@example.com
+  fullname: Administrator
+  admin: true
+  password: $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW  # password: secret
+test:
+  email: test@example.com
+  fullname: Test User
+  admin: false
+  password: $2b$12$UCqQEFTUM/fTwhlnSa9c8OLbUrrmWv1tfyR/mHh7eWPdAxvDP/JKK  # password: test 

@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enter key support for login form submission
 - Comprehensive API documentation in README
 - Detailed error response documentation
+- New configuration options for authentication and RAG settings
+- File upload and deletion test cases
+- Users configuration file (users.yaml) with example template
+- Application exit on missing users.yaml file
 
 ### Changed
 - Updated password hashing to use bcrypt directly
@@ -41,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - test_projects.py: Project access control tests
   - test_files.py: File operation tests
 - Updated API documentation with detailed response formats and error codes
+- Moved hardcoded values to configuration file:
+  - Authentication settings (secret key, algorithm, token expiration)
+  - RAG template for QA system
+  - Vector store settings
+- Improved password field mapping in user authentication
+- Enhanced configuration documentation in README
+- Added users.yaml to .gitignore for security
 
 ### Fixed
 - Fixed password verification in authentication
@@ -50,6 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed login form submission handling
 - Fixed test assertions to match actual API responses
 - Fixed error message consistency across endpoints
+- Fixed user authentication by mapping password field to hashed_password
+- Fixed configuration loading order in app initialization
+- Fixed application startup to check for required configuration files
 
 ### Removed
 - Removed React-based frontend components

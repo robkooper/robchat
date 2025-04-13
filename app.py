@@ -58,6 +58,36 @@ from jose import JWTError, jwt
 import bcrypt
 from passlib.context import CryptContext
 
+# Load configuration first, before setting up logging
+def load_config(config_path: str = "config.yaml") -> Dict[Any, Any]:
+    """
+    Load configuration from YAML file and check for required files.
+    
+    Args:
+        config_path (str): Path to configuration file
+        
+    Returns:
+        dict: Configuration dictionary
+        
+    Exits:
+        If config file or users.yaml doesn't exist
+    """
+    # Check for users.yaml first
+    if not os.path.exists("users.yaml"):
+        print("users.yaml file not found. Please create a users.yaml file based on users.example.yaml.")
+        sys.exit(1)
+
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except FileNotFoundError:
+        print(f"Configuration file {config_path} not found. Please create a config.yaml file.")
+        sys.exit(1)
+
+# Load configuration before setting up logging
+config = load_config()
+
 # Authentication models
 class Token(BaseModel):
     access_token: str
@@ -68,15 +98,18 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
+    email: str
+    fullname: str
+    admin: bool
     disabled: Optional[bool] = None
 
 class UserInDB(User):
     hashed_password: str
 
 # Authentication settings
-SECRET_KEY = "your-secret-key-here"  # In production, use a secure secret key
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = config["auth"]["secret_key"]
+ALGORITHM = config["auth"]["algorithm"]
+ACCESS_TOKEN_EXPIRE_MINUTES = config["auth"]["access_token_expire_minutes"]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -89,22 +122,32 @@ def verify_password(plain_password, hashed_password):
         hashed_password = hashed_password.encode('utf-8')
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
-# Mock user database - replace with real database in production
-fake_users_db = {
-    "test": {
-        "username": "test",
-        "hashed_password": get_password_hash("test"),
-        "disabled": False,
-    }
-}
+def load_users():
+    """Load users from users.yaml file"""
+    try:
+        with open('users.yaml', 'r') as f:
+            users = yaml.safe_load(f)
+            return users
+    except FileNotFoundError:
+        logging.error("users.yaml file not found")
+        return {}
+    except Exception as e:
+        logging.error(f"Error loading users.yaml: {e}")
+        return {}
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
+def get_user(username: str):
+    """Get user from users.yaml file"""
+    users = load_users()
+    if username in users:
+        user_dict = users[username]
+        user_dict["username"] = username
+        user_dict["hashed_password"] = user_dict.pop("password")  # Map password to hashed_password
         return UserInDB(**user_dict)
+    return None
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+def authenticate_user(username: str, password: str):
+    """Authenticate user against users.yaml file"""
+    user = get_user(username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -135,7 +178,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -146,31 +189,6 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
-# Load configuration first, before setting up logging
-def load_config(config_path: str = "config.yaml") -> Dict[Any, Any]:
-    """
-    Load configuration from YAML file.
-    
-    Args:
-        config_path (str): Path to configuration file
-        
-    Returns:
-        dict: Configuration dictionary
-        
-    Exits:
-        If config file doesn't exist
-    """
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        return config
-    except FileNotFoundError:
-        print(f"Configuration file {config_path} not found. Please create a config.yaml file.")
-        sys.exit(1)
-
-# Load configuration before setting up logging
-config = load_config()
 
 # Setup logging with config
 logging.basicConfig(
@@ -394,7 +412,7 @@ async def login_for_access_token(
             detail="Username and password are required"
         )
 
-    user = authenticate_user(fake_users_db, username, password)
+    user = authenticate_user(username, password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -403,7 +421,7 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.username, "fullname": user.fullname}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -740,17 +758,7 @@ async def query_rag(
         llm = get_llm()
         
         # Define custom prompt template
-        template = """Use the following pieces of context to answer the question at the end.
-If you don't know the answer based on the context, just say "I don't know" - do not try to make up an answer.
-If you do know the answer, provide it clearly and concisely, incorporating relevant information from all provided sources.
-Make sure to use all relevant information from the sources to give a complete answer.
-
-Context:
-{context}
-
-Question: {question}
-
-Answer: Let me help you with that."""
+        template = config["rag"]["qa_template"]
 
         PROMPT = PromptTemplate(
             template=template,
@@ -937,6 +945,13 @@ async def delete_file(
     except Exception as e:
         logger.error(f"Error deleting file: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/me", response_model=User)
+async def get_current_user_details(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """Get the current user's details"""
+    return current_user
 
 if __name__ == "__main__":
     import uvicorn

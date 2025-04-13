@@ -62,6 +62,15 @@ async function fetchWithAuth(url, options = {}) {
     return response;
 }
 
+// Get current user details
+async function getCurrentUser() {
+    const response = await fetchWithAuth('/api/me');
+    if (response) {
+        return await response.json();
+    }
+    return null;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is authenticated
     if (!isAuthenticated()) {
@@ -82,13 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Get username from JWT token
+    // Get user details from JWT token
     const token = getAuthToken();
     const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-    const username = tokenPayload.sub;
-    
-    // Update username display
-    document.getElementById('usernameDisplay').textContent = username;
+    document.getElementById('usernameDisplay').textContent = tokenPayload.fullname;
     
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
