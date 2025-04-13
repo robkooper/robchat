@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File upload and deletion test cases
 - Users configuration file (users.yaml) with example template
 - Application exit on missing users.yaml file
+- Updated ChromaDB to use a single collection named "robchat" instead of per-user/project collections
 
 ### Changed
 - Updated password hashing to use bcrypt directly

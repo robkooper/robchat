@@ -56,6 +56,8 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 import bcrypt
 from passlib.context import CryptContext
+import chromadb
+from chromadb.config import Settings
 
 # Load configuration first, before setting up logging
 def load_config(config_path: str = "config.yaml") -> Dict[Any, Any]:
@@ -291,7 +293,8 @@ def get_embeddings():
     """
     model_name = config["models"]["embeddings"]["model_name"]
     model_kwargs = {'device': DEVICE}
-    return HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
+    embeddings = HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
+    return embeddings
 
 @retry_with_fallback(max_attempts=3)
 def get_llm():
@@ -344,10 +347,20 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
         persist_directory = os.path.join(project_path, "chroma_db")
         embeddings = get_embeddings()
         
-        # Initialize or load the vector store
+        # Initialize ChromaDB client
+        client = chromadb.PersistentClient(path=persist_directory)
+        
+        # Get or create collection with fixed name "robchat"
+        try:
+            collection = client.get_collection(name="robchat")
+        except:
+            collection = client.create_collection(name="robchat")
+        
+        # Initialize vector store with the collection
         vector_store = Chroma(
             persist_directory=persist_directory,
-            embedding_function=embeddings
+            embedding_function=embeddings,
+            collection_name="robchat"
         )
         
         # Only load documents if explicitly requested and the store is empty
@@ -369,7 +382,6 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
                 )
                 texts = text_splitter.split_documents(documents)
                 vector_store.add_documents(texts)
-                vector_store.persist()
                 logger.info(f"Added {len(texts)} text chunks to vector store")
             else:
                 logger.info("No documents found in project directory")
@@ -646,7 +658,6 @@ async def create_file(
                 vector_store._collection.delete(
                     ids=existing_docs['ids']
                 )
-                vector_store.persist()
                 replaced_existing = True
                 logger.info(f"Removed {len(existing_docs['ids'])} existing chunks")
 
@@ -678,7 +689,6 @@ async def create_file(
                 texts=[doc["page_content"] for doc in documents],
                 metadatas=[doc["metadata"] for doc in documents]
             )
-            vector_store.persist()
             
             # Get final document count
             final_count = vector_store._collection.count()
