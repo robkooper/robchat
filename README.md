@@ -92,7 +92,62 @@ The configuration file contains the following sections:
 ### Vector Store Configuration
 - `chunk_size`: Size of text chunks for processing
 - `chunk_overlap`: Overlap between chunks
-- `retrieval_k`: Number of chunks to retrieve per query
+- `retrieval_k`: Number of text chunks to retrieve per query (default: 4). Note that this is not the same as the number of source documents, as chunks may come from the same document and are deduplicated in the response.
+
+Note: The default values for these settings are optimized for typical use cases, but can be adjusted based on your needs. Increasing values like `context_window`, `retrieval_k`, or `chunk_size` may impact performance and memory usage. Adjust these settings based on your system's capabilities.
+
+### Document Processing and Retrieval
+
+The system handles large documents and document sets through a chunking and retrieval process:
+
+1. **Document Chunking**:
+   - Documents are split into smaller chunks (controlled by `chunk_size`)
+   - Chunks overlap slightly (controlled by `chunk_overlap`)
+   - This maintains context between chunks while making text manageable
+
+2. **Retrieval Process**:
+   - Only the top `retrieval_k` chunks are retrieved for each query
+   - Chunks are selected based on semantic similarity to the query
+   - Not all documents/chunks are searched at once
+   - Focus is on the most relevant information
+
+3. **Context Window**:
+   - Limited by `context_window` setting (default: 4096 tokens)
+   - Includes both query and retrieved chunks
+   - May truncate content if limit is exceeded
+
+This approach has both advantages and limitations:
+
+**Advantages**:
+- Efficient processing
+- Faster response times
+- Lower memory usage
+- Focus on most relevant information
+
+**Limitations**:
+- May miss relevant information in non-top chunks
+- Limited context for complex queries
+- May not capture relationships between distant document parts
+
+For large document sets, consider:
+- Pre-filtering documents using metadata
+- Using document summaries
+- Implementing hierarchical search
+- Using document clustering
+
+Adjust settings in `config.yaml` to optimize for your needs:
+```yaml
+vector_store:
+  chunk_size: 2000     # Increase chunk size
+  chunk_overlap: 400   # Increase overlap
+  retrieval_k: 8       # Retrieve more chunks
+
+models:
+  llm:
+    context_window: 8192  # Increase context window
+```
+
+Note: Increasing these values will impact performance, memory usage, and response times.
 
 ## Examples
 
@@ -212,12 +267,6 @@ robchat/
 - Graceful handling of file processing errors
 - Detailed error logging
 - Clean file cleanup on processing failures
-
-## Limitations
-
-- Context window limited to 4096 tokens
-- Maximum 2 source documents per query for performance
-- Some document types may have limited text extraction
 
 ## Contributing
 
