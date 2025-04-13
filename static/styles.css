@@ -1,8 +1,90 @@
+/* Theme variables */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #212529;
+    --sidebar-bg: #f8f9fa;
+    --chat-bg: #ffffff;
+    --message-bg: #E9E9EB;
+    --message-text: #000000;
+    --user-message-bg: #34C759;
+    --user-message-text: #ffffff;
+    --input-bg: #E9E9EB;
+    --input-text: #212529;
+    --border-color: #dee2e6;
+    --avatar-bg: #E1E1E1;
+    --avatar-text: #666;
+    --time-text: #8E8E93;
+    --card-bg: #ffffff;
+    --card-border: #dee2e6;
+    --form-label: #212529;
+}
+
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --text-color: #e9ecef;
+    --sidebar-bg: #2d2d2d;
+    --chat-bg: #1a1a1a;
+    --message-bg: #2d2d2d;
+    --message-text: #e9ecef;
+    --user-message-bg: #34C759;
+    --user-message-text: #ffffff;
+    --input-bg: #2d2d2d;
+    --input-text: #e9ecef;
+    --border-color: #404040;
+    --avatar-bg: #404040;
+    --avatar-text: #e9ecef;
+    --time-text: #8E8E93;
+    --card-bg: #2d2d2d;
+    --card-border: #404040;
+    --form-label: #e9ecef;
+}
+
+/* Login page styles */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+}
+
+.card-title {
+    color: var(--text-color);
+}
+
+.form-label {
+    color: var(--form-label);
+}
+
+.form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+.form-control:focus {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+.form-control::placeholder {
+    color: #6c757d;
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: #adb5bd;
+}
+
 /* Main container styles */
 .container-fluid {
     padding: 0;
     height: calc(100vh - 56px);  /* Subtract navbar height */
     margin-top: 56px;  /* Add margin to account for fixed navbar */
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 /* Content layout */
@@ -14,7 +96,7 @@
 .sidebar {
     height: 100%;
     padding: 10px;
-    background-color: #f8f9fa;
+    background-color: var(--sidebar-bg);
 }
 
 .sidebar .card {
@@ -48,7 +130,7 @@
     overflow-y: auto;
     padding: 20px;
     padding-bottom: 90px;  /* Space for input box */
-    background-color: #ffffff;  /* Changed to white background */
+    background-color: var(--chat-bg);
     margin-bottom: 80px;
 }
 
@@ -63,16 +145,16 @@
 }
 
 .user-message {
-    background-color: #34C759;  /* iMessage green */
-    color: white;
+    background-color: var(--user-message-bg);
+    color: var(--user-message-text);
     margin-left: auto;
     margin-right: 10px;
     border-top-right-radius: 4px;
 }
 
 .bot-message {
-    background-color: #E9E9EB;  /* iMessage gray */
-    color: #000000;
+    background-color: var(--message-bg);
+    color: var(--message-text);
     margin-right: auto;
     margin-left: 10px;
     border-top-left-radius: 4px;
@@ -88,19 +170,19 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: #E1E1E1;
+    background-color: var(--avatar-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
-    color: #666;
+    color: var(--avatar-text);
     margin-right: 8px;
     flex-shrink: 0;
 }
 
 .message-time {
     font-size: 12px;
-    color: #8E8E93;
+    color: var(--time-text);
     margin-top: 4px;
     text-align: center;
 }
@@ -111,8 +193,8 @@
     left: 0;
     right: 0;
     padding: 8px 16px;  /* Reduced padding */
-    background-color: #ffffff;
-    border-top: 1px solid #E9E9EB;
+    background-color: var(--chat-bg);
+    border-top: 1px solid var(--border-color);
     box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     z-index: 1000;
     margin-left: 16.666667%;
@@ -122,7 +204,7 @@
     display: flex;
     align-items: center;
     gap: 6px;  /* Reduced gap */
-    background: #E9E9EB;
+    background: var(--input-bg);
     border-radius: 20px;
     padding: 2px 6px;  /* Reduced padding */
     max-width: 800px;
@@ -133,10 +215,20 @@
     border: none;
     border-radius: 16px;
     background: transparent;
-    padding: 6px 10px;  /* Reduced padding */
+    padding: 6px 10px;
     font-size: 16px;
     flex: 1;
     min-width: 0;
+    color: var(--input-text);
+}
+
+/* Placeholder text styles */
+.chat-input .form-control::placeholder {
+    color: #6c757d; /* Bootstrap's default placeholder color */
+}
+
+[data-theme="dark"] .chat-input .form-control::placeholder {
+    color: #adb5bd; /* Light gray for dark mode */
 }
 
 .chat-input .form-control:focus {
@@ -158,7 +250,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #34C759;
+    background-color: var(--user-message-bg);
     border: none;
     color: white;
     font-weight: 500;
@@ -187,7 +279,7 @@
     position: relative;
     background-color: transparent;
     border: none;
-    color: #212529;
+    color: var(--text-color);
 }
 
 /* Remove hover effect */
@@ -201,6 +293,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: default;  /* Remove pointer cursor */
+    color: var(--text-color);
 }
 
 /* File list styles */
@@ -211,8 +304,8 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    background-color: white;
-    border: 1px solid #dee2e6;
+    background-color: var(--chat-bg);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
 }
 
@@ -224,6 +317,12 @@
     display: flex;
     flex-direction: row;
     align-items: center;
+    color: var(--text-color);
+    background-color: var(--chat-bg);
+}
+
+#fileList tr:hover {
+    background-color: var(--message-bg);
 }
 
 #fileList td {
@@ -231,6 +330,8 @@
     border: none;
     font-size: 13px;
     line-height: 1.2;
+    color: var(--text-color);
+    background-color: transparent;
 }
 
 #fileList td:first-child {
@@ -238,12 +339,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text-color);
 }
 
 #fileList td:last-child {
     flex-shrink: 0;
     padding-left: 8px;
     text-align: right;
+    color: var(--text-color);
 }
 
 #fileList .delete-btn {
@@ -256,6 +359,10 @@
     transition: opacity 0.2s;
     display: inline-flex;
     align-items: center;
+}
+
+[data-theme="dark"] #fileList .delete-btn {
+    color: #ff6b6b; /* Lighter, more visible red in dark mode */
 }
 
 #fileList .delete-btn:hover {
@@ -295,7 +402,7 @@
         width: 100%;
         max-width: none;
         border-right: none;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .main-content {
@@ -329,16 +436,50 @@
 .dropdown-menu {
     max-height: 300px;
     overflow-y: auto;
+    background-color: var(--chat-bg);
+    border-color: var(--border-color);
+}
+
+.dropdown-item {
+    color: var(--text-color);
+    padding: 0.5rem 1rem;
+}
+
+/* Ensure dropdown menu text is always visible */
+.dropdown-menu .dropdown-item {
+    color: #212529; /* Bootstrap's default text color */
+}
+
+[data-theme="dark"] .dropdown-menu .dropdown-item {
+    color: #e9ecef; /* Light text for dark mode */
+}
+
+/* Hover styles with better contrast */
+.dropdown-menu .dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.1); /* Light gray for light mode */
+    color: #212529;
+}
+
+[data-theme="dark"] .dropdown-menu .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Light white for dark mode */
+    color: #e9ecef;
+}
+
+/* Dark mode toggle styles */
+#themeDropdown {
+    padding: 0.25rem 0.5rem;
+}
+
+#themeDropdown i {
+    font-size: 1.2rem;
+}
+
+.dropdown-item i {
+    margin-right: 0.5rem;
 }
 
 .dropdown-toggle {
     text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.dropdown-item {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -363,7 +504,7 @@
 
 .message.thinking {
     opacity: 0.8;
-    background-color: #f0f0f0;
+    background-color: var(--message-bg);
     min-width: 24px;
     display: flex;
     align-items: center;
