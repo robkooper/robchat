@@ -43,7 +43,6 @@ from langchain.prompts import PromptTemplate, ChatPromptTemplate, HumanMessagePr
 import torch
 from huggingface_hub import scan_cache_dir, hf_hub_download
 from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
-import PyPDF2
 from docx import Document
 from bs4 import BeautifulSoup
 from pptx import Presentation

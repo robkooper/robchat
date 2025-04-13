@@ -70,4 +70,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed frontend build system
 - Removed unnecessary frontend dependencies
 - Removed `/api/{user}/switch` endpoint and associated tests
-- Removed redundant test cases 
+- Removed redundant test cases
+- Removed PyPDF2 dependency in favor of pypdf 
