@@ -32,24 +32,56 @@ function initializeLogin() {
     const errorMessage = document.getElementById('errorMessage');
     if (!errorMessage) return;
     
-    // Add Enter key handling for both fields
+    const loginButton = document.getElementById('loginButton');
     const usernameField = document.getElementById('username');
     const passwordField = document.getElementById('password');
     
+    // Function to update button state
+    function updateButtonState() {
+        const isValid = usernameField.value.trim() !== '' && passwordField.value.trim() !== '';
+        loginButton.disabled = !isValid;
+    }
+    
+    // Add input event listeners to update button state
+    usernameField.addEventListener('input', updateButtonState);
+    passwordField.addEventListener('input', updateButtonState);
+    
+    // Add Enter key handling for both fields
     function handleEnterKey(e) {
-        if (e.key === 'Enter' && usernameField.value && passwordField.value) {
-            loginForm.dispatchEvent(new Event('submit'));
+        if (e.key === 'Enter' && !loginButton.disabled) {
+            handleLogin();
         }
     }
     
     usernameField.addEventListener('keypress', handleEnterKey);
     passwordField.addEventListener('keypress', handleEnterKey);
     
-    loginForm.addEventListener('submit', async function(e) {
+    // Handle login button click
+    loginButton.addEventListener('click', function(e) {
         e.preventDefault();
+        if (!loginButton.disabled) {
+            handleLogin();
+        }
+    });
+    
+    // Handle form submission
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!loginButton.disabled) {
+            handleLogin();
+        }
+    });
+    
+    // Function to handle the actual login
+    async function handleLogin() {
+        const username = usernameField.value.trim();
+        const password = passwordField.value.trim();
         
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+        if (!username || !password) {
+            errorMessage.textContent = 'Please enter both username and password';
+            errorMessage.style.display = 'block';
+            return;
+        }
         
         // Hide any previous error message
         errorMessage.style.display = 'none';
@@ -81,7 +113,10 @@ function initializeLogin() {
             errorMessage.textContent = 'An error occurred during login. Please try again.';
             errorMessage.style.display = 'block';
         }
-    });
+    }
+    
+    // Initial button state
+    updateButtonState();
 }
 
 // Initialize everything when the DOM is loaded
@@ -98,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTheme(theme);
         });
     });
-    
-    // Initialize login
+
+    // Initialize login functionality
     initializeLogin();
 }); 

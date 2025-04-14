@@ -62,15 +62,6 @@ async function fetchWithAuth(url, options = {}) {
     return response;
 }
 
-// Get current user details
-async function getCurrentUser() {
-    const response = await fetchWithAuth('/api/me');
-    if (response) {
-        return await response.json();
-    }
-    return null;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is authenticated
     if (!isAuthenticated()) {
@@ -111,6 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const projectNameInput = document.getElementById('projectName');
     const newProjectModal = new bootstrap.Modal(document.getElementById('newProjectModal'));
     const newProjectModalElement = document.getElementById('newProjectModal');
+
+    // Get username from the JWT token
+    const username = tokenPayload.sub;
 
     // Get username from the UI
     let currentProject = "";
@@ -240,13 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const thinkingMessage = addMessage('', 'bot', true);
 
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/query`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -286,13 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadProjects() {
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/projects`);
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/projects`);
             const data = await response.json();
             
             // Clear existing projects
@@ -330,30 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function switchProject(project) {
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/switch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user: user.username,
-                    project: project
-                }),
-            });
-
-            if (response.ok) {
-                currentProject = project;
-                projectDropdown.textContent = project;
-                loadFiles(); // Reload files for the new project
-            } else {
-                console.error('Error switching project');
-            }
+            // Simply update the UI and current project
+            currentProject = project;
+            projectDropdown.textContent = project;
+            loadFiles(); // Reload files for the new project
         } catch (error) {
             console.error('Error:', error);
         }
@@ -363,13 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files`);
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
             if (!response.ok) {
                 console.error('Error loading files:', response.status, response.statusText);
                 displayFiles([]); // Display empty list on error
@@ -416,13 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
                 method: 'DELETE'
             });
 
@@ -446,13 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         try {
-            const user = await getCurrentUser();
-            if (!user) {
-                console.error('No user found');
-                return;
-            }
-
-            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
                 method: 'POST',
                 body: formData,
             });

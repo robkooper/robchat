@@ -317,7 +317,11 @@ async def login_for_access_token(
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={
+            "sub": user.username,
+            "fullname": user.fullname
+        }, 
+        expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -560,10 +564,19 @@ async def get_user_projects(
     try:
         user_path = os.path.join(DATA_DIR, user)
         if not os.path.exists(user_path):
-            return {"projects": [], "current_project": ""}
+            # Create default project directory if it doesn't exist
+            default_project_path = os.path.join(user_path, "default")
+            os.makedirs(default_project_path, exist_ok=True)
+            return {"projects": ["default"], "current_project": "default"}
 
         projects = [d for d in os.listdir(user_path) if os.path.isdir(os.path.join(user_path, d))]
-        current_project = projects[0] if projects else ""
+        if not projects:
+            # Create default project directory if no projects exist
+            default_project_path = os.path.join(user_path, "default")
+            os.makedirs(default_project_path, exist_ok=True)
+            return {"projects": ["default"], "current_project": "default"}
+
+        current_project = projects[0] if projects else "default"
 
         return {
             "projects": projects,
