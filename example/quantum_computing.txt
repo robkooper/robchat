@@ -1,0 +1,24 @@
+Quantum Computing Overview
+
+Quantum computing is a type of computing that uses quantum-mechanical phenomena, such as superposition and entanglement, to perform operations on data. Unlike classical computers that use bits (0s and 1s), quantum computers use quantum bits or qubits, which can exist in multiple states simultaneously.
+
+Key Concepts in Quantum Computing:
+1. Qubits - The fundamental unit of quantum information
+2. Superposition - Ability to exist in multiple states at once
+3. Entanglement - Quantum correlation between particles
+4. Quantum Gates - Operations that manipulate qubits
+5. Quantum Algorithms - Specialized algorithms for quantum computers
+
+Applications of Quantum Computing:
+1. Cryptography - Breaking and creating secure codes
+2. Drug Discovery - Simulating molecular interactions
+3. Optimization - Solving complex optimization problems
+4. Machine Learning - Accelerating AI training
+5. Financial Modeling - Risk analysis and portfolio optimization
+
+Challenges in Quantum Computing:
+1. Quantum Decoherence - Maintaining quantum states
+2. Error Correction - Handling quantum errors
+3. Scalability - Building larger quantum systems
+4. Temperature Control - Maintaining near-absolute zero
+5. Quantum Software - Developing quantum algorithms 
