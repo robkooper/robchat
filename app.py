@@ -324,7 +324,7 @@ async def login_for_access_token(
 @app.get("/")
 async def read_root():
     """Serve the main application page"""
-    return FileResponse("static/index.html")
+    return FileResponse("static/login.html")
 
 @app.get("/chat")
 async def read_chat():
