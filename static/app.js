@@ -240,7 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const thinkingMessage = addMessage('', 'bot', true);
 
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/query`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -280,7 +286,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadProjects() {
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/projects`);
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/projects`);
             const data = await response.json();
             
             // Clear existing projects
@@ -318,13 +330,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function switchProject(project) {
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/switch`, {
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/switch`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    user: username,
+                    user: user.username,
                     project: project
                 }),
             });
@@ -345,7 +363,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files`);
             if (!response.ok) {
                 console.error('Error loading files:', response.status, response.statusText);
                 displayFiles([]); // Display empty list on error
@@ -392,7 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
                 method: 'DELETE'
             });
 
@@ -416,7 +446,13 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
+            const user = await getCurrentUser();
+            if (!user) {
+                console.error('No user found');
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(user.username)}/${encodeURIComponent(currentProject)}/files`, {
                 method: 'POST',
                 body: formData,
             });
