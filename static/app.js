@@ -62,15 +62,6 @@ async function fetchWithAuth(url, options = {}) {
     return response;
 }
 
-// Get current user details
-async function getCurrentUser() {
-    const response = await fetchWithAuth('/api/me');
-    if (response) {
-        return await response.json();
-    }
-    return null;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is authenticated
     if (!isAuthenticated()) {
@@ -83,9 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(savedTheme);
 
     // Theme dropdown event listeners
-    document.querySelectorAll('[data-theme]').forEach(item => {
+    document.querySelectorAll('.theme-selector[data-theme]').forEach(item => {
         item.addEventListener('click', e => {
             e.preventDefault();
+            e.stopPropagation();
             const theme = e.currentTarget.getAttribute('data-theme');
             setTheme(theme);
         });
@@ -112,7 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const newProjectModal = new bootstrap.Modal(document.getElementById('newProjectModal'));
     const newProjectModalElement = document.getElementById('newProjectModal');
 
-    // Get username from the UI
+    // Get username from the JWT token
+    const username = tokenPayload.sub;
+
+    // Initialize currentProject before using it
     let currentProject = "";
 
     // Clear input and set focus when modal is shown
@@ -155,11 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    addFileBtn.addEventListener('click', () => {
+    addFileBtn.addEventListener('click', (e) => {
+        if (!currentProject) {
+            alert('Please select a project before uploading files.');
+            return;
+        }
+        
+        // Prevent event propagation
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use the existing file input
         fileInput.click();
     });
 
-    fileInput.addEventListener('change', handleFileUpload);
+    // Add change event listener to the existing file input
+    fileInput.addEventListener('change', (event) => {
+        handleFileUpload(event);
+    });
+
     logoutBtn.addEventListener('click', handleLogout);
     createProjectBtn.addEventListener('click', createNewProject);
     projectNameInput.addEventListener('keypress', (e) => {
@@ -240,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const thinkingMessage = addMessage('', 'bot', true);
 
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/query`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -280,15 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadProjects() {
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/projects`);
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/projects`);
             const data = await response.json();
             
             // Clear existing projects
             projectList.innerHTML = '';
             
             // Update current project
-            currentProject = data.current_project;
-            projectDropdown.textContent = currentProject || 'Select Project';
+            currentProject = data.current_project || "default";
+            projectDropdown.textContent = currentProject;
             
             // Add all projects to the dropdown, including current project
             const projects = data.projects || [];
@@ -318,26 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function switchProject(project) {
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/switch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user: username,
-                    project: project
-                }),
-            });
-
-            if (response.ok) {
-                currentProject = project;
-                projectDropdown.textContent = project;
-                loadFiles(); // Reload files for the new project
-            } else {
-                console.error('Error switching project');
-            }
+            currentProject = project;
+            projectDropdown.textContent = project;
+            await loadFiles();
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error switching project:', error);
         }
     }
 
@@ -345,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`);
             if (!response.ok) {
                 console.error('Error loading files:', response.status, response.statusText);
                 displayFiles([]); // Display empty list on error
@@ -372,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Filename cell
             const filenameTd = document.createElement('td');
-            filenameTd.textContent = file;
+            filenameTd.textContent = file.filename || file;
             tr.appendChild(filenameTd);
             
             // Actions cell
@@ -380,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-            deleteBtn.onclick = () => deleteFile(file);
+            deleteBtn.onclick = () => deleteFile(file.filename || file);
             actionsTd.appendChild(deleteBtn);
             tr.appendChild(actionsTd);
             
@@ -392,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProject) return;
         
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files/${encodeURIComponent(filename)}`, {
                 method: 'DELETE'
             });
 
@@ -410,13 +404,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleFileUpload(event) {
         const file = event.target.files[0];
-        if (!file || !currentProject) return;
+        if (!file || !currentProject) {
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const response = await fetchWithAuth(`http://localhost:8000/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
+            const response = await fetchWithAuth(`/api/${encodeURIComponent(username)}/${encodeURIComponent(currentProject)}/files`, {
                 method: 'POST',
                 body: formData,
             });
@@ -424,10 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 loadFiles();
             } else {
-                console.error('Error uploading file');
+                console.error('Error uploading file:', await response.text());
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error in file upload:', error);
         }
 
         // Reset file input
