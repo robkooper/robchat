@@ -1,18 +1,80 @@
+"""Test suite for authentication functionality.
+
+This module contains tests that verify the authentication system of the application,
+including token generation, validation, and error handling for invalid credentials.
+"""
+
 import pytest
 from fastapi.testclient import TestClient
 from app import app
 
 client = TestClient(app)
 
-def test_token_valid_credentials():
-    """Test token endpoint with valid credentials"""
+def test_get_token():
+    """Test successful token generation with valid credentials."""
     response = client.post(
         "/token",
         data={"username": "test", "password": "test"}
     )
     assert response.status_code == 200
-    assert "access_token" in response.json()
-    assert response.json()["token_type"] == "bearer"
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+def test_get_token_invalid_credentials():
+    """Test token generation failure with invalid credentials."""
+    response = client.post(
+        "/token",
+        data={"username": "test", "password": "wrong"}
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert data["detail"] == "Incorrect username or password"
+
+def test_get_token_missing_credentials():
+    """Test token generation failure with missing credentials."""
+    response = client.post(
+        "/token",
+        data={}
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert any("field required" in error["msg"].lower() for error in data["detail"])
+
+def test_protected_endpoint_with_token():
+    """Test access to protected endpoint with valid token."""
+    # First get a token
+    response = client.post(
+        "/token",
+        data={"username": "test", "password": "test"}
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+
+    # Then use it to access a protected endpoint
+    response = client.get(
+        "/api/test/test_project/files",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+
+def test_protected_endpoint_without_token():
+    """Test access to protected endpoint without token."""
+    response = client.get("/api/test/test_project/files")
+    assert response.status_code == 401
+    data = response.json()
+    assert data["detail"] == "Not authenticated"
+
+def test_protected_endpoint_with_invalid_token():
+    """Test access to protected endpoint with invalid token."""
+    response = client.get(
+        "/api/test/test_project/files",
+        headers={"Authorization": "Bearer invalid_token"}
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert data["detail"] == "Could not validate credentials"
 
 def test_token_invalid_username():
     """Test token endpoint with invalid username"""
@@ -31,11 +93,6 @@ def test_token_invalid_password():
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Incorrect username or password"
-
-def test_token_missing_credentials():
-    """Test token endpoint with missing credentials"""
-    response = client.post("/token")
-    assert response.status_code == 422  # FastAPI validation error
 
 def get_test_token():
     """Helper function to get a valid token for test user"""
@@ -130,7 +187,7 @@ def test_delete_file_wrong_user():
 def test_upload_and_delete_file():
     """Test uploading a file and then deleting it"""
     token = get_test_token()
-    
+
     # Upload a test file
     test_content = "This is a test file content"
     response = client.post(
@@ -144,7 +201,7 @@ def test_upload_and_delete_file():
     assert data["filename"] == "test.txt"
     assert "chunks" in data
     assert data["chunks"] > 0
-    
+
     # Delete the uploaded file
     response = client.delete(
         "/api/test/test_project/files/test.txt",
@@ -156,7 +213,7 @@ def test_upload_and_delete_file():
 def test_delete_nonexistent_file():
     """Test deleting a file that doesn't exist"""
     token = get_test_token()
-    
+
     response = client.delete(
         "/api/test/test_project/files/nonexistent.txt",
         headers={"Authorization": f"Bearer {token}"}
@@ -167,7 +224,7 @@ def test_delete_nonexistent_file():
 def test_upload_invalid_file():
     """Test uploading an invalid file type"""
     token = get_test_token()
-    
+
     test_content = "This is a test file content"
     response = client.post(
         "/api/test/test_project/files",
@@ -175,4 +232,4 @@ def test_upload_invalid_file():
         files={"file": ("test.invalid", test_content, "application/octet-stream")}
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Unsupported file type. Supported types are: .pdf, .docx, .txt, .html, .pptx, .xlsx" 
+    assert response.json()["detail"] == "Unsupported file type. Supported types are: .pdf, .docx, .txt, .html, .pptx, .xlsx"
