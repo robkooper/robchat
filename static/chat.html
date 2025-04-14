@@ -38,36 +38,32 @@
         <div class="row">
             <!-- Left Sidebar -->
             <div class="col-md-2 sidebar">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="dropdown mb-3">
-                            <div class="d-flex align-items-center w-100">
-                                <div class="dropdown flex-grow-1">
-                                    <button class="btn btn-outline-secondary w-100 dropdown-toggle" type="button" id="projectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Select Project
-                                    </button>
-                                    <ul class="dropdown-menu w-100" id="projectList" aria-labelledby="projectDropdown">
-                                        <!-- Projects will be listed here -->
-                                    </ul>
-                                </div>
-                                <button class="btn btn-outline-success ms-2 p-1 flex-shrink-0" id="addProjectBtn" data-bs-toggle="modal" data-bs-target="#newProjectModal" style="width: 32px; height: 32px;">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
-                            </div>
+                <div class="dropdown mb-3">
+                    <div class="d-flex align-items-center w-100">
+                        <div class="dropdown flex-grow-1">
+                            <button class="btn btn-outline-secondary w-100 dropdown-toggle" type="button" id="projectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                Select Project
+                            </button>
+                            <ul class="dropdown-menu w-100" id="projectList" aria-labelledby="projectDropdown">
+                                <!-- Projects will be listed here -->
+                            </ul>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <tbody id="fileList">
-                                    <!-- Files will be listed here -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <button class="btn btn-primary w-100 mt-3" id="addFileBtn">
-                            <i class="bi bi-upload"></i> Upload File
+                        <button class="btn btn-outline-success ms-2 p-1 flex-shrink-0" id="addProjectBtn" data-bs-toggle="modal" data-bs-target="#newProjectModal" style="width: 32px; height: 32px;">
+                            <i class="bi bi-plus-lg"></i>
                         </button>
-                        <input type="file" id="fileInput" style="display: none;">
                     </div>
                 </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <tbody id="fileList">
+                            <!-- Files will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn btn-primary w-100 mt-3" id="addFileBtn">
+                    <i class="bi bi-upload"></i> Upload
+                </button>
+                <input type="file" id="fileInput" style="display: none;">
             </div>
 
             <!-- Chat Area -->
