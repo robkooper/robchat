@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Bootstrap and Vanilla JavaScript references to README
 - Added detailed logging to login functionality for debugging
 - Added comprehensive workflow test suite for file upload, querying, and deletion
+- GitHub Actions workflows for automated testing and linting:
+  - Parallel pytest workflow with Python 3.9, 3.10, and 3.11 support
+  - Pylint workflow with minimum score requirement
+  - Test coverage reporting and Codecov integration
 
 ### Changed
 - Updated README to clarify configuration file setup process
