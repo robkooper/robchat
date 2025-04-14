@@ -2,6 +2,31 @@
 
 A powerful Retrieval-Augmented Generation (RAG) system for document question answering. RobChat allows you to upload documents and ask questions about their content, receiving AI-generated answers with source citations.
 
+## TL;DR - Quick Start
+
+1. Clone and setup:
+   ```bash
+   git clone https://github.com/yourusername/robchat.git
+   cd robchat
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. Configure:
+   - Copy `users.example.yaml` to `users.yaml`
+   - Copy `config.example.yaml` to `config.yaml`
+   - Update settings in both files if needed (optional)
+
+3. Run:
+   ```bash
+   uvicorn app:app --reload
+   ```
+
+4. Access:
+   - Open `http://localhost:8000` in your browser
+   - Login with default credentials (admin/secret or test/test)
+
 ## Features
 
 - **Document Support**: Upload and process multiple document types:
@@ -24,7 +49,8 @@ A powerful Retrieval-Augmented Generation (RAG) system for document question ans
   - sentence-transformers for embeddings
   - ChromaDB for vector storage
   - FastAPI for web API
-  - React-based frontend
+  - Bootstrap for responsive UI
+  - Vanilla JavaScript for frontend interactivity
 
 ## Requirements
 
@@ -63,6 +89,11 @@ The application is configured using YAML files:
 
 1. `config.yaml` - Main configuration file
 2. `users.yaml` - User authentication configuration
+
+Both configuration files are in `.gitignore` for security reasons. You need to create them from their example files:
+
+1. Copy `config.example.yaml` to `config.yaml`
+2. Copy `users.example.yaml` to `users.yaml`
 
 ### Configuration Files
 
@@ -303,7 +334,13 @@ All endpoints require authentication using a Bearer token. To get a token:
 - `POST /token`
   - Authenticate and get access token
   - Body (form data): `username` and `password`
-  - Returns: `{"access_token": "token", "token_type": "bearer"}`
+  - Returns:
+    ```json
+    {
+      "access_token": "token",
+      "token_type": "bearer"
+    }
+    ```
 
 All other endpoints follow the RESTful pattern `/api/{user}/{project}` where:
 - `{user}`: The username
@@ -314,14 +351,25 @@ Available endpoints:
 
 - `GET /api/{user}/projects`
   - Lists all projects for a user and the current active project
-  - Returns: `{"projects": ["project1", "project2"], "current_project": "project1"}`
+  - Returns:
+    ```json
+    {
+      "projects": ["project1", "project2"],
+      "current_project": "project1"
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot access another user's projects
 
 - `GET /api/{user}/{project}/files`
   - Lists all files in the project
-  - Returns: `{"files": ["file1.pdf", "file2.txt"]}`
+  - Returns:
+    ```json
+    {
+      "files": ["file1.pdf", "file2.txt"]
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot access another user's files
@@ -330,7 +378,16 @@ Available endpoints:
   - Upload a new file to the project
   - Accepts: multipart/form-data with file
   - Supported file types: .pdf, .docx, .txt, .html, .pptx, .xlsx
-  - Returns: `{"filename": "file.txt", "chunks": 5, "initial_count": 0, "final_count": 5, "replaced_existing": false}`
+  - Returns:
+    ```json
+    {
+      "filename": "file.txt",
+      "chunks": 5,
+      "initial_count": 0,
+      "final_count": 5,
+      "replaced_existing": false
+    }
+    ```
   - Error responses:
     - 400: Unsupported file type
     - 401: Not authenticated
@@ -339,7 +396,13 @@ Available endpoints:
 
 - `DELETE /api/{user}/{project}/files/{filename}`
   - Delete a file from the project
-  - Returns: `{"status": "success", "message": "File <filename> deleted successfully"}`
+  - Returns:
+    ```json
+    {
+      "status": "success",
+      "message": "File <filename> deleted successfully"
+    }
+    ```
   - Error responses:
     - 401: Not authenticated
     - 403: Cannot delete another user's files
@@ -349,7 +412,7 @@ Available endpoints:
 - `POST /api/{user}/{project}/query`
   - Query the project's documents
   - Body: `{"text": "your question here"}`
-  - Returns: 
+  - Returns:
     ```json
     {
       "answer": "AI-generated answer",
@@ -398,9 +461,15 @@ robchat/
 │       └── {project}/
 │           └── chroma_db/  # Vector store
 ├── tests/          # Test files
+│   ├── test_auth.py    # Authentication tests
+│   ├── test_files.py   # File operation tests
+│   └── test_projects.py # Project access control tests
 ├── config.yaml     # Application configuration
 ├── config.example.yaml  # Example configuration
+├── users.yaml      # User authentication configuration
+├── users.example.yaml  # Example user configuration
 ├── requirements.txt # Python dependencies
+├── .gitignore      # Git ignore rules
 └── CHANGELOG.md    # Version history
 ```
 
