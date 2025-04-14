@@ -8,19 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of RobChat
+- TL;DR section in README for quick setup
+- Clarification about configuration files in README
 - Support for multiple document types (PDF, DOCX, TXT, HTML, PPTX, XLSX)
 - RAG pipeline with document chunking and indexing
 - FastAPI backend with RESTful API endpoints
-- React-based frontend interface
-- Configuration system with config.yaml
-- Project-based document organization
-- Source citation in responses
-- Example folder with API usage demonstrations:
-  - Python script (test_api.py) for API interaction
-  - Shell script (test_api.sh) for API interaction
-  - Sample documents about quantum computing and AI
-  - Documentation on how to use the examples
 - Static frontend implementation with vanilla JavaScript
 - User authentication system with JWT tokens
 - Theme selection with light, dark, and auto modes
@@ -32,8 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Users configuration file (users.yaml) with example template
 - Application exit on missing users.yaml file
 - Updated ChromaDB to use a single collection named "robchat" instead of per-user/project collections
+- Added Bootstrap and Vanilla JavaScript references to README
+- Added detailed logging to login functionality for debugging
+- Added comprehensive workflow test suite for file upload, querying, and deletion
+- GitHub Actions workflows for automated testing and linting:
+  - Parallel pytest workflow with Python 3.9, 3.10, and 3.11 support
+  - Pylint workflow with minimum score requirement
+  - Test coverage reporting and Codecov integration
 
 ### Changed
+- Updated README to clarify configuration file setup process
 - Updated password hashing to use bcrypt directly
 - Improved error handling in authentication
 - Fixed test cases to work with authentication
@@ -53,6 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved password field mapping in user authentication
 - Enhanced configuration documentation in README
 - Added users.yaml to .gitignore for security
+- Improved login form submission handling
+- Cleaned up debug code and console.log statements
+- Removed hardcoded localhost URLs
+- Improved error handling to be more graceful
+- Fixed username extraction from JWT token
 
 ### Fixed
 - Fixed password verification in authentication
@@ -65,6 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed user authentication by mapping password field to hashed_password
 - Fixed configuration loading order in app initialization
 - Fixed application startup to check for required configuration files
+- Fixed login form submission not triggering
+- Fixed username undefined error in project loading
+- Fixed Enter key handling in login form
+- Theme selector event propagation interfering with file upload functionality
+- File upload button click handling
+- HTML structure and class names for theme selectors
+- Debug logging cleanup in JavaScript files
 
 ### Removed
 - Removed React-based frontend components
