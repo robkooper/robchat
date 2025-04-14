@@ -10,9 +10,22 @@ function isAuthenticated() {
 
 // Theme management
 function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    // Store the theme choice in localStorage
     localStorage.setItem('theme', theme);
-    updateThemeIcon(theme);
+    
+    // Apply the actual theme (convert auto to system theme)
+    const appliedTheme = theme === 'auto' ? getSystemTheme() : theme;
+    document.documentElement.setAttribute('data-theme', appliedTheme);
+    updateThemeIcon(appliedTheme);
+    
+    // Update active state of theme options
+    document.querySelectorAll('.theme-selector[data-theme]').forEach(item => {
+        if (item.getAttribute('data-theme') === theme) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 }
 
 function getSystemTheme() {
@@ -29,8 +42,11 @@ function updateThemeIcon(theme) {
 
 // Listen for system theme changes
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    if (localStorage.getItem('theme') === 'auto') {
-        setTheme('auto');
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'auto') {
+        const newTheme = getSystemTheme();
+        document.documentElement.setAttribute('data-theme', newTheme);
+        updateThemeIcon(newTheme);
     }
 });
 
@@ -80,6 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const theme = e.currentTarget.getAttribute('data-theme');
             setTheme(theme);
+            // Close the dropdown after selection
+            const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('themeDropdown'));
+            if (dropdown) {
+                dropdown.hide();
+            }
         });
     });
 
