@@ -550,4 +550,46 @@ body {
 
 .navbar .ms-auto {
     padding-right: 1rem;
+}
+
+/* Modal styles */
+.modal-content {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+}
+
+.modal-header {
+    border-bottom-color: var(--border-color);
+}
+
+.modal-footer {
+    border-top-color: var(--border-color);
+}
+
+.modal-title {
+    color: var(--text-color);
+}
+
+.modal-body {
+    color: var(--text-color);
+}
+
+.modal-body .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+.modal-body .form-control:focus {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--input-text);
+}
+
+.modal-body .form-control::placeholder {
+    color: #6c757d;
+}
+
+[data-theme="dark"] .modal-body .form-control::placeholder {
+    color: #adb5bd;
 } 
