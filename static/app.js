@@ -74,9 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(savedTheme);
 
     // Theme dropdown event listeners
-    document.querySelectorAll('[data-theme]').forEach(item => {
+    document.querySelectorAll('.theme-selector[data-theme]').forEach(item => {
         item.addEventListener('click', e => {
             e.preventDefault();
+            e.stopPropagation();
             const theme = e.currentTarget.getAttribute('data-theme');
             setTheme(theme);
         });
@@ -106,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get username from the JWT token
     const username = tokenPayload.sub;
 
-    // Get username from the UI
+    // Initialize currentProject before using it
     let currentProject = "";
 
     // Clear input and set focus when modal is shown
@@ -149,11 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    addFileBtn.addEventListener('click', () => {
+    addFileBtn.addEventListener('click', (e) => {
+        if (!currentProject) {
+            alert('Please select a project before uploading files.');
+            return;
+        }
+        
+        // Prevent event propagation
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use the existing file input
         fileInput.click();
     });
 
-    fileInput.addEventListener('change', handleFileUpload);
+    // Add change event listener to the existing file input
+    fileInput.addEventListener('change', (event) => {
+        handleFileUpload(event);
+    });
+
     logoutBtn.addEventListener('click', handleLogout);
     createProjectBtn.addEventListener('click', createNewProject);
     projectNameInput.addEventListener('keypress', (e) => {
@@ -281,8 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
             projectList.innerHTML = '';
             
             // Update current project
-            currentProject = data.current_project;
-            projectDropdown.textContent = currentProject || 'Select Project';
+            currentProject = data.current_project || "default";
+            projectDropdown.textContent = currentProject;
             
             // Add all projects to the dropdown, including current project
             const projects = data.projects || [];
@@ -312,12 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function switchProject(project) {
         try {
-            // Simply update the UI and current project
             currentProject = project;
             projectDropdown.textContent = project;
-            loadFiles(); // Reload files for the new project
+            await loadFiles();
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error switching project:', error);
         }
     }
 
@@ -352,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Filename cell
             const filenameTd = document.createElement('td');
-            filenameTd.textContent = file;
+            filenameTd.textContent = file.filename || file;
             tr.appendChild(filenameTd);
             
             // Actions cell
@@ -360,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-            deleteBtn.onclick = () => deleteFile(file);
+            deleteBtn.onclick = () => deleteFile(file.filename || file);
             actionsTd.appendChild(deleteBtn);
             tr.appendChild(actionsTd);
             
@@ -390,7 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleFileUpload(event) {
         const file = event.target.files[0];
-        if (!file || !currentProject) return;
+        if (!file || !currentProject) {
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', file);
@@ -404,10 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 loadFiles();
             } else {
-                console.error('Error uploading file');
+                console.error('Error uploading file:', await response.text());
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error in file upload:', error);
         }
 
         // Reset file input
