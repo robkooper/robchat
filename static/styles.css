@@ -484,6 +484,16 @@ body {
     margin-right: 0.5rem;
 }
 
+/* Active state for theme selector */
+.theme-selector.active {
+    background-color: rgba(0, 0, 0, 0.1);
+    font-weight: 500;
+}
+
+[data-theme="dark"] .theme-selector.active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
 .dropdown-toggle {
     text-align: left;
     overflow: hidden;

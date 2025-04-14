@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed hardcoded localhost URLs
 - Improved error handling to be more graceful
 - Fixed username extraction from JWT token
+- Updated chat interface and styles for better user experience
+- Enhanced theme-specific styles for modal dialogs
 
 ### Fixed
 - Fixed password verification in authentication
@@ -77,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File upload button click handling
 - HTML structure and class names for theme selectors
 - Debug logging cleanup in JavaScript files
+- Fixed auto theme selection and system theme changes handling
 
 ### Removed
 - Removed React-based frontend components
