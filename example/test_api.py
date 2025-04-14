@@ -64,19 +64,19 @@ def main():
 
         # Make some queries
         print("\nMaking queries...")
-        
+
         # Query 1: Quantum computing basics
         print("\nQuery 1: What are the key concepts in quantum computing?")
         result = query(token, "What are the key concepts in quantum computing?")
         print("Answer:", result["answer"])
         print("Sources:", [s["file"] for s in result["sources"]])
-        
+
         # Query 2: AI applications
         print("\nQuery 2: What are the main applications of AI?")
         result = query(token, "What are the main applications of AI?")
         print("Answer:", result["answer"])
         print("Sources:", [s["file"] for s in result["sources"]])
-        
+
         # Combined query
         print("\nQuery 3: How can AI help with quantum computing?")
         result = query(token, "How can AI help with quantum computing?")
@@ -87,4 +87,4 @@ def main():
         print(f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    main() 
+    main()
