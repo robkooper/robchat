@@ -1,0 +1,34 @@
+# Web Framework
+fastapi==0.115.9  # Pinned version for ChromaDB compatibility
+uvicorn>=0.34.0
+python-multipart>=0.0.20  # For file uploads
+pydantic>=2.11.3
+python-jose[cryptography]>=3.3.0  # For JWT token handling
+passlib[bcrypt]>=1.7.4  # For password hashing
+
+# Testing
+httpx>=0.28.0  # Required for TestClient
+pytest>=8.0.0
+
+# LangChain and Related
+langchain>=0.3.23
+langchain-community>=0.3.21
+chromadb>=1.0.4
+
+# LLM and Embeddings
+torch>=2.6.0  # For embeddings
+sentence-transformers>=4.0.2
+llama-cpp-python>=0.3.8
+huggingface-hub>=0.30.2
+
+# Document Processing
+pypdf>=3.17.0  # PDF processing
+python-docx>=1.1.2  # DOCX processing
+beautifulsoup4>=4.13.3  # HTML processing
+python-pptx>=1.0.2  # PPTX processing
+openpyxl>=3.1.5  # XLSX processing
+
+# Utilities
+pyyaml>=6.0.2  # Configuration management
+tenacity>=9.1.2  # Retry logic 
+
