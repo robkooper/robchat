@@ -15,6 +15,12 @@ server:
   port: 8000       # Port to run the server on
   log_level: "info"  # Logging level (debug, info, warning, error, critical)
 
+# Authentication Configuration
+auth:
+  secret_key: "your-secret-key-here"  # Change this in production!
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
 # Models Configuration
 models:
   llm:
@@ -34,4 +40,20 @@ models:
 vector_store:
   chunk_size: 1000     # Size of text chunks for processing
   chunk_overlap: 200   # Overlap between chunks
-  retrieval_k: 4       # Number of chunks to retrieve for each query 
+  retrieval_k: 4       # Number of chunks to retrieve for each query
+
+# RAG Configuration
+rag:
+  # Keep {context} and {question} placeholders as is - they will be replaced with actual values at runtime
+  qa_template: | 
+    Use the following pieces of context to answer the question at the end.
+    If you don't know the answer based on the context, just say "I don't know" - do not try to make up an answer.
+    If you do know the answer, provide it clearly and concisely, incorporating relevant information from all provided sources.
+    Make sure to use all relevant information from the sources to give a complete answer.
+
+    Context:
+    {context}
+
+    Question: {question}
+
+    Answer: Let me help you with that. 
