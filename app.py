@@ -59,35 +59,82 @@ from passlib.context import CryptContext
 import chromadb
 from chromadb.config import Settings
 
+# -------------------------------------------------------------------------------------------------
+# CONFIGURATION
+# -------------------------------------------------------------------------------------------------
+
 # Load configuration first, before setting up logging
-def load_config(config_path: str = "config.yaml") -> Dict[Any, Any]:
+def load_config() -> Dict[Any, Any]:
     """
     Load configuration from YAML file and check for required files.
-    
-    Args:
-        config_path (str): Path to configuration file
-        
+
     Returns:
         dict: Configuration dictionary
-        
+
     Exits:
-        If config file or users.yaml doesn't exist
+        If config.yaml or users.yaml doesn't exist
     """
     # Check for users.yaml first
     if not os.path.exists("users.yaml"):
         print("users.yaml file not found. Please create a users.yaml file based on users.example.yaml.")
         sys.exit(1)
 
+    # Check for config.yaml q
+    if not os.path.exists("config.yaml"):
+        print("users.yaml file not found. Please create a users.yaml file based on users.example.yaml.")
+        sys.exit(1)
+
     try:
-        with open(config_path, 'r') as f:
+        with open("config.yaml", 'r') as f:
             config = yaml.safe_load(f)
         return config
     except FileNotFoundError:
-        print(f"Configuration file {config_path} not found. Please create a config.yaml file.")
+        print('Configuration file "config.yaml" not found. Please create a config.yaml file.')
         sys.exit(1)
 
 # Load configuration before setting up logging
 config = load_config()
+
+# Setup logging with config
+logging.basicConfig(
+    level=getattr(logging, config.get("server", {}).get("log_level", "INFO").upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+logger.info("Loaded configuration from config.yaml")
+
+# Set specific loggers to INFO level
+logging.getLogger('python_multipart.multipart').setLevel(logging.INFO)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+
+# Device configuration
+"""Configure the compute device (CPU, CUDA, or MPS) based on availability"""
+try:
+    if torch.backends.mps.is_available():
+        DEVICE = "mps"  # Apple Silicon (M1/M2) GPU
+        logger.info("Using Apple Metal (MPS) device")
+    elif torch.cuda.is_available():
+        DEVICE = "cuda"
+        logger.info("Using CUDA device: %s", torch.cuda.get_device_name(0))
+    else:
+        DEVICE = "cpu"
+        logger.info("Using CPU device")
+
+    logger.info("PyTorch version: %s", torch.__version__)
+    logger.info("Device: %s", DEVICE)
+except Exception as e:
+    logger.warning("Error detecting device, falling back to CPU: %s", str(e))
+    DEVICE = "cpu"
+
+# Update global constants from config
+DATA_DIR = config["data"]["base_directory"]
+
+# Define the prompts
+HUMAN_TEMPLATE = "Question: {question}"
+
+# -------------------------------------------------------------------------------------------------
+# AUTHENTICATION
+# -------------------------------------------------------------------------------------------------
 
 # Authentication models
 class Token(BaseModel):
@@ -130,10 +177,10 @@ def load_users():
             users = yaml.safe_load(f)
             return users
     except FileNotFoundError:
-        logging.error("users.yaml file not found")
+        logger.error("users.yaml file not found")
         return {}
     except Exception as e:
-        logging.error(f"Error loading users.yaml: {e}")
+        logger.error("Error loading users.yaml: %s", str(e))
         return {}
 
 def get_user(username: str):
@@ -177,8 +224,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
+    except JWTError as exc:
+        raise credentials_exception from exc
     user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
@@ -191,56 +238,18 @@ async def get_current_active_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Setup logging with config
-logging.basicConfig(
-    level=getattr(logging, config.get("server", {}).get("log_level", "INFO").upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-logger.info(f"Loaded configuration from config.yaml")
-
-# Set specific loggers to INFO level
-logging.getLogger('python_multipart.multipart').setLevel(logging.INFO)
-logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
-
-# Device configuration
-"""Configure the compute device (CPU, CUDA, or MPS) based on availability"""
-try:
-    if torch.backends.mps.is_available():
-        DEVICE = "mps"  # Apple Silicon (M1/M2) GPU
-        logger.info("Using Apple Metal (MPS) device")
-    elif torch.cuda.is_available():
-        DEVICE = "cuda"
-        logger.info(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
-    else:
-        DEVICE = "cpu"
-        logger.info("Using CPU device")
-
-    logger.info(f"PyTorch version: {torch.__version__}")
-    logger.info(f"Device: {DEVICE}")
-except Exception as e:
-    logger.warning(f"Error detecting device, falling back to CPU: {str(e)}")
-    DEVICE = "cpu"
-
-# Print HuggingFace cache location
-try:
-    cache_info = scan_cache_dir()
-    logger.info(f"\nHuggingFace cache directory: {HUGGINGFACE_HUB_CACHE}")
-    logger.info(f"Number of cached models: {len(cache_info.repos)}")
-    logger.info("Cached repositories:")
-    for repo in cache_info.repos:
-        logger.info(f"- {repo.repo_id}")
-except Exception as e:
-    logger.warning(f"Error scanning cache directory: {str(e)}")
+# -------------------------------------------------------------------------------------------------
+# RAG COMPONENTS
+# -------------------------------------------------------------------------------------------------
 
 # Retry decorator for model operations
 def retry_with_fallback(max_attempts=3):
     """
     Decorator that implements retry logic with exponential backoff.
-    
+
     Args:
         max_attempts (int): Maximum number of retry attempts
-        
+
     Returns:
         Function wrapper that implements the retry logic
     """
@@ -259,30 +268,6 @@ def retry_with_fallback(max_attempts=3):
             return None
         return wrapper
     return decorator
-
-app = FastAPI()
-
-# Setup static paths
-static_path = os.path.join(os.path.dirname(__file__), "static")
-
-# Mount the static files
-if os.path.exists(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Update global constants from config
-DATA_DIR = config["data"]["base_directory"]
-
-# Define the prompts
-HUMAN_TEMPLATE = "Question: {question}"
 
 # Initialize the RAG components
 @retry_with_fallback(max_attempts=3)
@@ -394,6 +379,28 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
         logger.error(f"Error initializing vector store: {str(e)}")
         raise
 
+# -------------------------------------------------------------------------------------------------
+# INITIALIZE FASTAPI APP
+# -------------------------------------------------------------------------------------------------
+
+app = FastAPI(title="RobChat API")
+
+# Setup static paths
+static_path = os.path.join(os.path.dirname(__file__), "static")
+
+# Mount the static files
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # API Models
 class Query(BaseModel):
     text: str
@@ -405,6 +412,24 @@ class UserProjects(BaseModel):
     """Model for user projects response."""
     projects: List[str]  # List of all projects
     current_project: str
+
+# -------------------------------------------------------------------------------------------------
+# WEB PAGES
+# -------------------------------------------------------------------------------------------------
+
+@app.get("/")
+async def read_root():
+    """Serve the main application page"""
+    return FileResponse("static/login.html")
+
+@app.get("/chat")
+async def read_chat():
+    """Serve the chat interface page"""
+    return FileResponse("static/chat.html")
+
+# -------------------------------------------------------------------------------------------------
+# AUTHENTICATION ENDPOINTS
+# -------------------------------------------------------------------------------------------------
 
 # API Endpoints
 @app.post("/token", response_model=Token)
@@ -432,29 +457,71 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "fullname": user.fullname}, expires_delta=access_token_expires
+        data={
+            "sub": user.username,
+            "fullname": user.fullname
+        }, 
+        expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/")
-async def read_root():
-    login_path = os.path.join(static_path, "login.html")
-    if not os.path.exists(login_path):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Login page not found"
-        )
-    return FileResponse(login_path)
+# -------------------------------------------------------------------------------------------------
+# PROJECT ENDPOINTS
+# -------------------------------------------------------------------------------------------------
 
-@app.get("/chat")
-async def read_chat():
-    chat_path = os.path.join(static_path, "chat.html")
-    if not os.path.exists(chat_path):
+@app.get("/api/{user}/projects")
+async def get_user_projects(
+    user: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """
+    Get all projects for a user and their current selected project.
+    
+    Args:
+        user (str): User identifier
+        
+    Returns:
+        UserProjects: List of all projects and current project
+    """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat page not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: Cannot access projects of another user"
         )
-    return FileResponse(chat_path)
+        
+    try:
+        user_dir = os.path.join(DATA_DIR, user)
+        if not os.path.exists(user_dir):
+            return UserProjects(projects=[], current_project="default")
+            
+        # Get all project directories
+        projects = [d for d in os.listdir(user_dir) if os.path.isdir(os.path.join(user_dir, d))]
+        
+        if not projects:
+            return UserProjects(projects=[], current_project="default")
+        
+        # Get current project from the most recently accessed project directory
+        current_project = ""
+        latest_time = 0
+        for project in projects:
+            project_path = os.path.join(user_dir, project)
+            access_time = os.path.getatime(project_path)
+            if access_time > latest_time:
+                latest_time = access_time
+                current_project = project
+        
+        return UserProjects(projects=projects, current_project=current_project)
+    except Exception as e:
+        logger.error("Error getting user projects: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user projects: {str(e)}"
+        ) from e
+
+# -------------------------------------------------------------------------------------------------
+# FILE HANDLING ENDPOINTS
+# -------------------------------------------------------------------------------------------------
 
 def parse_pdf(file_path: str) -> str:
     """
@@ -587,15 +654,34 @@ async def list_files(
     # Check if the authenticated user matches the requested user
     if current_user.username != user:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot access files of another user"
         )
-        
-    project_dir = os.path.join(DATA_DIR, user, project)
-    if not os.path.exists(project_dir):
-        return {"files": []}
-    files = [f for f in os.listdir(project_dir) if os.path.isfile(os.path.join(project_dir, f))]
-    return {"files": files}
+
+    try:
+        project_path = os.path.join(DATA_DIR, user, project)
+        if not os.path.exists(project_path):
+            return {"files": []}
+
+        files = []
+        supported_extensions = config["data"]["supported_extensions"]
+        for filename in os.listdir(project_path):
+            if filename.endswith(tuple(supported_extensions)):
+                file_path = os.path.join(project_path, filename)
+                files.append({
+                    "filename": filename,
+                    "size": os.path.getsize(file_path),
+                    "modified": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+                })
+
+        return {"files": files}
+
+    except Exception as e:
+        logger.error("Error listing files: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list files: {str(e)}"
+        ) from e
 
 @app.post("/api/{user}/{project}/files")
 async def create_file(
@@ -621,7 +707,7 @@ async def create_file(
     # Check if the authenticated user matches the requested user
     if current_user.username != user:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot upload files for another user"
         )
         
@@ -631,17 +717,15 @@ async def create_file(
         # Get supported extensions from config
         supported_extensions = config["data"]["supported_extensions"]
         file_extension = os.path.splitext(file.filename)[1].lower()
-        
         if file_extension not in supported_extensions:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Unsupported file type. Supported types are: {', '.join(supported_extensions)}"
             )
 
         # Create project directory if it doesn't exist
         project_path = os.path.join(DATA_DIR, user, project)
         os.makedirs(project_path, exist_ok=True)
-        logger.info(f"Using project directory: {project_path}")
 
         # Check if file already exists and get its metadata
         file_path = os.path.join(project_path, file.filename)
@@ -665,63 +749,120 @@ async def create_file(
         with open(file_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
-        logger.info(f"Saved file to: {file_path}")
 
         # Get initial document count
         initial_count = vector_store._collection.count()
         logger.info(f"Initial document count in vector store: {initial_count}")
 
         # Process the file for vector store
-        try:
-            texts = process_file_for_vectorstore(file_path)
-            logger.info(f"Successfully processed {file.filename} into {len(texts)} chunks")
+        texts = process_file_for_vectorstore(file_path)
+        logger.info(f"Successfully processed {file.filename} into {len(texts)} chunks")
 
-            # Create documents from the text chunks
-            documents = []
-            for chunk in texts:
-                documents.append({
-                    "page_content": chunk,
-                    "metadata": {"source": file_path}
-                })
-            
-            # Add documents to vector store
-            vector_store.add_texts(
-                texts=[doc["page_content"] for doc in documents],
-                metadatas=[doc["metadata"] for doc in documents]
-            )
-            
-            # Get final document count
-            final_count = vector_store._collection.count()
-            logger.info(f"Added {len(texts)} chunks to vector store. Document count: {initial_count} -> {final_count}")
-            
-            return {
-                "filename": file.filename,
-                "chunks": len(texts),
-                "initial_count": initial_count,
-                "final_count": final_count,
-                "replaced_existing": replaced_existing
-            }
-            
-        except Exception as e:
-            # If processing fails, clean up the file and raise an error
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.info(f"Cleaned up file after failed processing: {file_path}")
-            logger.error(f"Error processing file: {str(e)}")
-            logger.error(f"Error type: {type(e).__name__}")
-            logger.error(f"Error traceback: {traceback.format_exc()}")
-            raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
-            
+        # Create documents from the text chunks
+        documents = []
+        for chunk in texts:
+            documents.append({
+                "page_content": chunk,
+                "metadata": {"source": file_path}
+            })
+        
+        # Add documents to vector store
+        vector_store.add_texts(
+            texts=[doc["page_content"] for doc in documents],
+            metadatas=[doc["metadata"] for doc in documents]
+        )
+        
+        # Get final document count
+        final_count = vector_store._collection.count()
+        logger.info(f"Added {len(texts)} chunks to vector store. Document count: {initial_count} -> {final_count}")
+        
+        return {
+            "filename": file.filename,
+            "size": os.path.getsize(file_path),
+            "chunks": len(texts),
+            "initial_count": initial_count,
+            "final_count": final_count,
+            "replaced_existing": replaced_existing
+        }
+                        
     except HTTPException as he:
         raise he
     except Exception as e:
         # Clean up on any other error
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
-        logger.error(f"Unexpected error during file upload: {str(e)}")
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error during file upload: {str(e)}")
+        logger.exception("Unexpected error during file upload: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file: {str(e)}"
+        ) from e
+
+
+@app.delete("/api/{user}/{project}/files/{filename}")
+async def delete_file(
+    user: str, 
+    project: str, 
+    filename: str,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """
+    Delete a file and its content from the vector store.
+    
+    Args:
+        user (str): User identifier
+        project (str): Project identifier
+        filename (str): Name of the file to delete
+        
+    Returns:
+        dict: Status message
+    """
+    # Check if the authenticated user matches the requested user
+    if current_user.username != user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: Cannot delete files of another user"
+        )
+        
+    try:
+        # Get the project path
+        project_path = os.path.join(DATA_DIR, user, project)
+        if not os.path.exists(project_path):
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        # Get the file path
+        file_path = os.path.join(project_path, filename)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        # Get the vector store
+        vector_store = get_vector_store(user, project)
+        
+        # Delete the file from disk
+        os.remove(file_path)
+        
+        # Delete the file's content from ChromaDB
+        # We need to find all documents that came from this file
+        # and delete them from the vector store
+        collection = vector_store._collection
+        results = collection.get(where={"source": file_path})
+        
+        if results and results["ids"]:
+            collection.delete(ids=results["ids"])
+            
+        return {"status": "success", "message": f"File {filename} deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error deleting file: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        ) from e
+
+# -------------------------------------------------------------------------------------------------
+# QUERY ENDPOINTS
+# -------------------------------------------------------------------------------------------------
 
 @app.post("/api/{user}/{project}/query")
 async def query_rag(
@@ -744,11 +885,17 @@ async def query_rag(
     # Check if the authenticated user matches the requested user
     if current_user.username != user:
         raise HTTPException(
-            status_code=403,
-            detail="Permission denied: Cannot query another user's documents"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: Cannot query documents of another user"
         )
         
     try:
+        if not query.text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Query cannot be empty"
+            )
+
         start_time = time.time()
         
         # Get vector store for this user/project
@@ -839,152 +986,46 @@ async def query_rag(
                 "output_tokens": output_tokens
             }
         }
-    except Exception as e:
-        logger.error(f"Error processing query: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while processing your query: {str(e)}"
-        )
-
-@app.get("/api/{user}/projects")
-async def get_user_projects(
-    user: str,
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    """
-    Get all projects for a user and their current selected project.
-    
-    Args:
-        user (str): User identifier
-        
-    Returns:
-        UserProjects: List of all projects and current project
-    """
-    # Check if the authenticated user matches the requested user
-    if current_user.username != user:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: Cannot access projects of another user"
-        )
-        
-    try:
-        user_dir = os.path.join(DATA_DIR, user)
-        if not os.path.exists(user_dir):
-            return UserProjects(projects=[], current_project="default")
-            
-        # Get all project directories
-        projects = [d for d in os.listdir(user_dir) if os.path.isdir(os.path.join(user_dir, d))]
-        
-        if not projects:
-            return UserProjects(projects=[], current_project="default")
-        
-        # Get current project from the most recently accessed project directory
-        current_project = ""
-        latest_time = 0
-        for project in projects:
-            project_path = os.path.join(user_dir, project)
-            access_time = os.path.getatime(project_path)
-            if access_time > latest_time:
-                latest_time = access_time
-                current_project = project
-        
-        return UserProjects(projects=projects, current_project=current_project)
-    except Exception as e:
-        logger.error(f"Error getting user projects: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get user projects: {str(e)}"
-        )
-
-@app.delete("/api/{user}/{project}/files/{filename}")
-async def delete_file(
-    user: str, 
-    project: str, 
-    filename: str,
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    """
-    Delete a file and its content from the vector store.
-    
-    Args:
-        user (str): User identifier
-        project (str): Project identifier
-        filename (str): Name of the file to delete
-        
-    Returns:
-        dict: Status message
-    """
-    # Check if the authenticated user matches the requested user
-    if current_user.username != user:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: Cannot delete files of another user"
-        )
-        
-    try:
-        # Get the project path
-        project_path = os.path.join(DATA_DIR, user, project)
-        if not os.path.exists(project_path):
-            raise HTTPException(status_code=404, detail="Project not found")
-            
-        # Get the file path
-        file_path = os.path.join(project_path, filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="File not found")
-            
-        # Get the vector store
-        vector_store = get_vector_store(user, project)
-        
-        # Delete the file from disk
-        os.remove(file_path)
-        
-        # Delete the file's content from ChromaDB
-        # We need to find all documents that came from this file
-        # and delete them from the vector store
-        collection = vector_store._collection
-        results = collection.get(where={"source": file_path})
-        
-        if results and results["ids"]:
-            collection.delete(ids=results["ids"])
-            
-        return {"status": "success", "message": f"File {filename} deleted successfully"}
-        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting file: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error processing query: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while processing your query: {str(e)}"
+        ) from e
+
 
 @app.get("/api/me", response_model=User)
 async def get_current_user_details(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
-    """Get the current user's details"""
+    """Get current user details"""
     return current_user
 
 if __name__ == "__main__":
     import uvicorn
     import signal
     import sys
-    
+
     # Configure uvicorn logging
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.setLevel(logging.INFO)
-    
+
     # Global flag to control server state
     should_exit = False
-    
+
     def handle_exit(signum, frame):
         """Handle exit signals"""
         global should_exit
         should_exit = True
         logger.info("Shutdown requested. Stopping server...")
         sys.exit(0)
-    
+
     # Register signal handlers
     signal.signal(signal.SIGINT, handle_exit)
     signal.signal(signal.SIGTERM, handle_exit)
-    
+
     # Use server settings from config
     config = uvicorn.Config(
         app=app,
@@ -993,4 +1034,4 @@ if __name__ == "__main__":
         log_level=config["server"]["log_level"]
     )
     server = uvicorn.Server(config)
-    server.run() 
+    server.run()
