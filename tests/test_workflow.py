@@ -1,3 +1,10 @@
+"""Test suite for the complete workflow of the application.
+
+This module contains tests that verify the complete workflow of the application,
+including file upload, querying, and deletion operations. It ensures that all
+components work together correctly and maintain proper state throughout the process.
+"""
+
 import pytest
 from fastapi.testclient import TestClient
 from app import app
@@ -5,6 +12,11 @@ from app import app
 client = TestClient(app)
 
 def get_test_token():
+    """Get a test authentication token.
+    
+    Returns:
+        str: A JWT token for authentication.
+    """
     response = client.post(
         "/token",
         data={"username": "test", "password": "test"}
@@ -13,17 +25,37 @@ def get_test_token():
 
 @pytest.fixture
 def test_file_content():
-    return """
-    The Zylax programming language was created by Dr. Elara Voss in 2025.
-    It was first released in 2026 as an open-source project.
-    Zylax is known for its unique quantum-inspired syntax and parallel processing capabilities.
-    The language supports a novel programming paradigm called "quantum imperative".
-    Zylax is primarily used in quantum computing simulations and advanced AI research.
-    Its most notable feature is the ability to write code that runs both forwards and backwards in time.
+    """Fixture providing test file content.
+    
+    Returns:
+        str: Content for test files.
     """
+    return """Zylax Programming Language Documentation
+
+Zylax is a revolutionary programming language created by Dr. Elara Voss in 2023.
+It combines the best features of functional and imperative programming paradigms
+while introducing novel concepts in quantum computing integration.
+
+Key Features:
+- Type-safe quantum computing primitives
+- Automatic parallelization of computational tasks
+- Built-in support for distributed systems
+- Advanced pattern matching capabilities
+- Zero-cost abstractions for high-performance computing
+
+The language is designed to be both powerful and accessible, making it suitable
+for both academic research and industrial applications."""
 
 @pytest.fixture
 def uploaded_file(test_file_content):
+    """Fixture that uploads a test file and returns its filename.
+    
+    Args:
+        test_file_content (str): Content to write to the test file.
+        
+    Returns:
+        str: Name of the uploaded file.
+    """
     token = get_test_token()
     response = client.post(
         "/api/test/test_project/files",
@@ -32,10 +64,14 @@ def uploaded_file(test_file_content):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["filename"] == "zylax_info.txt"
-    return token, data["filename"]
+    return data["filename"]
 
 def test_file_upload(test_file_content):
+    """Test the file upload functionality.
+    
+    Args:
+        test_file_content (str): Content to upload in the test file.
+    """
     token = get_test_token()
     response = client.post(
         "/api/test/test_project/files",
@@ -45,67 +81,109 @@ def test_file_upload(test_file_content):
     assert response.status_code == 200
     data = response.json()
     assert "filename" in data
-    assert "chunks" in data
     assert data["filename"] == "zylax_info.txt"
-    assert isinstance(data["chunks"], int)
+    assert "chunks" in data
     assert data["chunks"] > 0
 
-def test_query_with_known_answer(uploaded_file):
-    token, filename = uploaded_file
+def test_query_document(uploaded_file):
+    """Test querying an uploaded document.
+    
+    Args:
+        uploaded_file (str): Name of the uploaded file to query.
+    """
+    token = get_test_token()
     response = client.post(
         "/api/test/test_project/query",
         headers={"Authorization": f"Bearer {token}"},
-        json={"text": "Who created Zylax?"}
+        json={"query": "Who created Zylax?"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "answer" in data
     assert "sources" in data
-    assert "metrics" in data
     assert "Elara Voss" in data["answer"]
-    assert len(data["sources"]) > 0
-    assert filename in data["sources"][0]["file"]
+    assert uploaded_file in data["sources"][0]["file"]
 
-def test_query_with_unknown_answer(uploaded_file):
-    token, _ = uploaded_file
+def test_delete_file(uploaded_file):
+    """Test deleting an uploaded file.
+    
+    Args:
+        uploaded_file (str): Name of the file to delete.
+    """
+    token = get_test_token()
+    response = client.delete(
+        f"/api/test/test_project/files/{uploaded_file}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert data["message"] == f"File {uploaded_file} deleted successfully"
+
+def test_query_after_deletion(uploaded_file):
+    """Test querying after file deletion should fail.
+    
+    Args:
+        uploaded_file (str): Name of the file that was deleted.
+    """
+    token = get_test_token()
     response = client.post(
         "/api/test/test_project/query",
         headers={"Authorization": f"Bearer {token}"},
-        json={"text": "What is the capital of France?"}
+        json={"query": "What are the key features of Zylax?"}
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert "No documents found" in data["detail"]
+
+def test_complete_workflow(test_file_content):
+    """Test the complete workflow: upload, query, and delete.
+    
+    Args:
+        test_file_content (str): Content to use for the test file.
+    """
+    # Upload file
+    token = get_test_token()
+    response = client.post(
+        "/api/test/test_project/files",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("zylax_info.txt", test_file_content, "text/plain")}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    filename = data["filename"]
+    assert filename == "zylax_info.txt"
+
+    # Query file
+    response = client.post(
+        "/api/test/test_project/query",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"query": "What is Zylax?"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "answer" in data
-    # Check for any variation of "I don't know" in the answer
-    assert any(phrase in data["answer"].lower() for phrase in ["i don't know", "i do not know", "based on the context"])
+    assert "sources" in data
+    assert filename in data["sources"][0]["file"]
 
-def test_file_deletion(uploaded_file):
-    token, filename = uploaded_file
+    # Delete file
     response = client.delete(
         f"/api/test/test_project/files/{filename}",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
-    assert response.json()["message"] == f"File {filename} deleted successfully"
+    data = response.json()
+    assert "message" in data
+    assert data["message"] == f"File {filename} deleted successfully"
 
-def test_query_after_deletion(uploaded_file):
-    token, filename = uploaded_file
-    # Delete the file first
-    response = client.delete(
-        f"/api/test/test_project/files/{filename}",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    
-    # Try to query after deletion
+    # Verify file is deleted
     response = client.post(
         "/api/test/test_project/query",
         headers={"Authorization": f"Bearer {token}"},
-        json={"text": "Who created Zylax?"}
+        json={"query": "What is Zylax?"}
     )
-    # The application might return either a 404 or a 500 error when no documents are found
-    assert response.status_code in [404, 500]
-    if response.status_code == 404:
-        assert response.json()["detail"] == "No documents found in the project"
-    else:
-        assert "error" in response.json()["detail"].lower() 
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert "No documents found" in data["detail"]

@@ -44,4 +44,4 @@ def test_projects_endpoint_invalid_token():
         headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Could not validate credentials" 
+    assert response.json()["detail"] == "Could not validate credentials"
