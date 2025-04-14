@@ -73,6 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed login form submission not triggering
 - Fixed username undefined error in project loading
 - Fixed Enter key handling in login form
+- Theme selector event propagation interfering with file upload functionality
+- File upload button click handling
+- HTML structure and class names for theme selectors
+- Debug logging cleanup in JavaScript files
 
 ### Removed
 - Removed React-based frontend components
