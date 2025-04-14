@@ -3,6 +3,7 @@ fastapi==0.115.9  # Pinned version for ChromaDB compatibility
 uvicorn>=0.34.0
 python-multipart>=0.0.20  # For file uploads
 pydantic>=2.11.3
+python-jose[cryptography]>=3.3.0  # For JWT token handling
 
 # Testing
 httpx>=0.28.0  # Required for TestClient
