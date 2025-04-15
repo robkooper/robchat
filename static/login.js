@@ -1,29 +1,3 @@
-// Theme management
-function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-    updateThemeIcon(theme);
-}
-
-function getSystemTheme() {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function updateThemeIcon(theme) {
-    const icon = document.querySelector('#themeDropdown i');
-    if (theme === 'auto') {
-        theme = getSystemTheme();
-    }
-    icon.className = theme === 'dark' ? 'bi bi-moon' : 'bi bi-sun';
-}
-
-// Listen for system theme changes
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    if (localStorage.getItem('theme') === 'auto') {
-        setTheme('auto');
-    }
-});
-
 // Initialize login functionality
 function initializeLogin() {
     const loginForm = document.getElementById('loginForm');
@@ -122,18 +96,8 @@ function initializeLogin() {
 // Initialize everything when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize theme
-    const savedTheme = localStorage.getItem('theme') || 'auto';
-    setTheme(savedTheme);
-
-    // Theme dropdown event listeners
-    document.querySelectorAll('[data-theme]').forEach(item => {
-        item.addEventListener('click', e => {
-            e.preventDefault();
-            const theme = e.currentTarget.getAttribute('data-theme');
-            setTheme(theme);
-        });
-    });
-
+    initializeTheme();
+    
     // Initialize login functionality
     initializeLogin();
 }); 

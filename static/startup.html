@@ -44,8 +44,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/login.js"></script>
+    <script src="/static/theme.js"></script>
     <script>
+        // Initialize theme
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTheme();
+        });
+
         // Refresh the page every 10 seconds
         setTimeout(function() {
             window.location.reload();

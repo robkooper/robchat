@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added startup page to display during LLM initialization
 - Added proper cleanup handling for multiprocessing resources
 - Added semaphore cleanup in application shutdown
+- Moved theme-related code to dedicated theme.js file for better code organization
 
 ### Changed
 - Updated README to clarify configuration file setup process
@@ -63,6 +64,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed username extraction from JWT token
 - Updated chat interface and styles for better user experience
 - Enhanced theme-specific styles for modal dialogs
+- Improved theme initialization across all pages
+- Removed duplicate theme code from login.js
+- Simplified startup page by removing unnecessary login.js dependency
 
 ### Fixed
 - Fixed password verification in authentication
