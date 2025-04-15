@@ -31,8 +31,8 @@ jobs:
     
     - name: Configure application
       run: |
-        copy config.exmaple.yaml config.yaml
-        copy users.exmaple.yaml users.yaml
+        cp config.exmaple.yaml config.yaml
+        cp users.exmaple.yaml users.yaml
   
     - name: Run pytest with coverage
       run: |
