@@ -269,6 +269,10 @@ def retry_with_fallback(max_attempts=3):
         return wrapper
     return decorator
 
+# Global caches
+_llm_cache: Optional[LlamaCpp] = None
+_vector_store_cache: Dict[str, Chroma] = {}  # Key format: "user:project"
+
 # Initialize the RAG components
 @retry_with_fallback(max_attempts=3)
 def get_embeddings():
@@ -286,7 +290,12 @@ def get_llm():
     """
     Initialize and return the Llama2 language model.
     Uses model and parameters specified in configuration.
+    Returns cached instance if available.
     """
+    global _llm_cache
+    if _llm_cache is not None:
+        return _llm_cache
+        
     try:
         llm_config = config["models"]["llm"]
         model_path = hf_hub_download(
@@ -296,7 +305,7 @@ def get_llm():
         
         n_gpu_layers = 1 if DEVICE == "mps" else 0
         
-        return LlamaCpp(
+        _llm_cache = LlamaCpp(
             model_path=model_path,
             temperature=llm_config["temperature"],
             max_tokens=llm_config["max_tokens"],
@@ -306,6 +315,7 @@ def get_llm():
             n_batch=llm_config["n_batch"],
             verbose=True,
         )
+        return _llm_cache
     except Exception as e:
         logger.error(f"Error initializing LLM: {str(e)}")
         raise
@@ -315,6 +325,7 @@ def get_llm():
 def get_vector_store(user: str, project: str, load_documents: bool = False):
     """
     Initialize or load the vector store for a user/project.
+    Returns cached instance if available for the same user/project.
     
     Args:
         user (str): User identifier
@@ -324,6 +335,16 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
     Returns:
         Chroma: The vector store instance
     """
+    global _vector_store_cache
+    cache_key = f"{user}:{project}"
+    
+    # Check if we have a cached instance for this user/project
+    if cache_key in _vector_store_cache:
+        vector_store = _vector_store_cache[cache_key]
+        # If load_documents is True and store is empty, we need to reload
+        if not (load_documents and vector_store._collection.count() == 0):
+            return vector_store
+    
     try:
         project_path = os.path.join(DATA_DIR, user, project)
         if not os.path.exists(project_path):
@@ -373,6 +394,8 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
         else:
             logger.info(f"Using existing vector store with {vector_store._collection.count()} documents")
         
+        # Cache the vector store
+        _vector_store_cache[cache_key] = vector_store
         return vector_store
         
     except Exception as e:
@@ -910,7 +933,7 @@ async def query_rag(
         )
         logger.debug("Using retriever with k=%d sources", num_sources)
 
-        # Create QA chain
+        # Get LLM from cache
         llm = get_llm()
         
         # Define custom prompt template
