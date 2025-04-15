@@ -13,7 +13,7 @@ client = TestClient(app)
 
 def get_test_token():
     """Get a test authentication token.
-    
+
     Returns:
         str: A JWT token for authentication.
     """
@@ -26,7 +26,7 @@ def get_test_token():
 @pytest.fixture(scope="module")
 def test_file_content():
     """Fixture providing test file content.
-    
+
     Returns:
         str: Content for test files.
     """
@@ -49,10 +49,10 @@ for both academic research and industrial applications."""
 @pytest.fixture(scope="module")
 def uploaded_file(test_file_content):
     """Fixture that uploads a test file and returns its filename.
-    
+
     Args:
         test_file_content (str): Content to write to the test file.
-        
+
     Returns:
         str: Name of the uploaded file.
     """
@@ -68,7 +68,7 @@ def uploaded_file(test_file_content):
 
 def test_file_upload(test_file_content):
     """Test the file upload functionality.
-    
+
     Args:
         test_file_content (str): Content to upload in the test file.
     """
@@ -87,7 +87,7 @@ def test_file_upload(test_file_content):
 
 def test_query_document(uploaded_file):
     """Test querying an uploaded document.
-    
+
     Args:
         uploaded_file (str): Name of the uploaded file to query.
     """
@@ -106,7 +106,7 @@ def test_query_document(uploaded_file):
 
 def test_delete_file(uploaded_file):
     """Test deleting an uploaded file.
-    
+
     Args:
         uploaded_file (str): Name of the file to delete.
     """
@@ -122,7 +122,7 @@ def test_delete_file(uploaded_file):
 
 def test_query_after_deletion(uploaded_file):
     """Test querying after file deletion should fail.
-    
+
     Args:
         uploaded_file (str): Name of the file that was deleted.
     """

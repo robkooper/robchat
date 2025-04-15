@@ -353,7 +353,7 @@ def get_llm():
     global _llm_cache
     if _llm_cache is not None:
         return _llm_cache
-        
+
     try:
         llm_config = config["models"]["llm"]
         logger.info("Downloading model from Hugging Face...")
@@ -365,9 +365,9 @@ def get_llm():
             resume_download=True      # Resume interrupted downloads
         )
         logger.info("Model downloaded, initializing...")
-        
+
         n_gpu_layers = 1 if DEVICE == "mps" else 0
-        
+
         _llm_cache = LlamaCpp(
             model_path=model_path,
             temperature=llm_config["temperature"],
@@ -378,13 +378,13 @@ def get_llm():
             n_batch=llm_config["n_batch"],
             verbose=True,
         )
-        
+
         # Test the model to ensure it's fully loaded
         logger.info("Testing model initialization...")
         test_prompt = "Hello, are you ready?"
         _llm_cache(test_prompt)
         logger.info("Model initialization complete")
-        
+
         return _llm_cache
     except Exception as e:
         logger.error(f"Error initializing LLM: {str(e)}")
@@ -396,49 +396,49 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
     """
     Initialize or load the vector store for a user/project.
     Returns cached instance if available for the same user/project.
-    
+
     Args:
         user (str): User identifier
         project (str): Project identifier
         load_documents (bool): Whether to load documents from disk (default: False)
-        
+
     Returns:
         Chroma: The vector store instance
     """
     global _vector_store_cache
     cache_key = f"{user}:{project}"
-    
+
     # Check if we have a cached instance for this user/project
     if cache_key in _vector_store_cache:
         vector_store = _vector_store_cache[cache_key]
         # If load_documents is True and store is empty, we need to reload
         if not (load_documents and vector_store._collection.count() == 0):
             return vector_store
-    
+
     try:
         project_path = os.path.join(DATA_DIR, user, project)
         if not os.path.exists(project_path):
             os.makedirs(project_path)
-        
+
         persist_directory = os.path.join(project_path, "chroma_db")
         embeddings = get_embeddings()
-        
+
         # Initialize ChromaDB client
         client = chromadb.PersistentClient(path=persist_directory)
-        
+
         # Get or create collection with fixed name "robchat"
         try:
             collection = client.get_collection(name="robchat")
         except:
             collection = client.create_collection(name="robchat")
-        
+
         # Initialize vector store with the collection
         vector_store = Chroma(
             persist_directory=persist_directory,
             embedding_function=embeddings,
             collection_name="robchat"
         )
-        
+
         # Only load documents if explicitly requested and the store is empty
         if load_documents and vector_store._collection.count() == 0:
             logger.info(f"Loading documents from {project_path}")
@@ -449,7 +449,7 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
                 loader_cls=TextLoader
             )
             documents = loader.load()
-            
+
             if documents:
                 logger.info(f"Found {len(documents)} documents to process")
                 text_splitter = RecursiveCharacterTextSplitter(
@@ -463,11 +463,11 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
                 logger.info("No documents found in project directory")
         else:
             logger.info(f"Using existing vector store with {vector_store._collection.count()} documents")
-        
+
         # Cache the vector store
         _vector_store_cache[cache_key] = vector_store
         return vector_store
-        
+
     except Exception as e:
         logger.error(f"Error initializing vector store: {str(e)}")
         raise
@@ -523,7 +523,7 @@ async def login_for_access_token(
         data={
             "sub": user.username,
             "fullname": user.fullname
-        }, 
+        },
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -539,10 +539,10 @@ async def get_user_projects(
 ):
     """
     Get all projects for a user and their current selected project.
-    
+
     Args:
         user (str): User identifier
-        
+
     Returns:
         UserProjects: List of all projects and current project
     """
@@ -552,18 +552,18 @@ async def get_user_projects(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot access projects of another user"
         )
-        
+
     try:
         user_dir = os.path.join(DATA_DIR, user)
         if not os.path.exists(user_dir):
             return UserProjects(projects=[], current_project="default")
-            
+
         # Get all project directories
         projects = [d for d in os.listdir(user_dir) if os.path.isdir(os.path.join(user_dir, d))]
-        
+
         if not projects:
             return UserProjects(projects=[], current_project="default")
-        
+
         # Get current project from the most recently accessed project directory
         current_project = ""
         latest_time = 0
@@ -573,7 +573,7 @@ async def get_user_projects(
             if access_time > latest_time:
                 latest_time = access_time
                 current_project = project
-        
+
         return UserProjects(projects=projects, current_project=current_project)
     except Exception as e:
         logger.error("Error getting user projects: %s", str(e))
@@ -589,13 +589,13 @@ async def get_user_projects(
 def parse_pdf(file_path: str) -> str:
     """
     Extract text content from PDF files with robust error handling.
-    
+
     Args:
         file_path (str): Path to the PDF file
-        
+
     Returns:
         str: Extracted text content
-        
+
     Raises:
         ValueError: If PDF is encrypted or no text could be extracted
     """
@@ -604,7 +604,7 @@ def parse_pdf(file_path: str) -> str:
         with open(file_path, 'rb') as file:
             # Create a PDF reader object
             reader = pypdf.PdfReader(file)
-            
+
             # Check if the PDF is encrypted
             if reader.is_encrypted:
                 try:
@@ -626,7 +626,7 @@ def parse_pdf(file_path: str) -> str:
 
             if not text:  # If no text was extracted
                 raise ValueError("No readable text found in PDF")
-                
+
             return '\n'.join(text)
     except Exception as e:
         logging.error(f"Error processing PDF {file_path}: {str(e)}")
@@ -635,20 +635,20 @@ def parse_pdf(file_path: str) -> str:
 def process_file_for_vectorstore(file_path: str) -> List[str]:
     """
     Process a file and prepare it for the vector store with proper chunking.
-    
+
     Args:
         file_path (str): Path to the file to process
-        
+
     Returns:
         List[str]: List of text chunks ready for vectorization
-        
+
     Raises:
         ValueError: If file type is unsupported or processing fails
     """
     try:
         # Get file extension
         file_extension = os.path.splitext(file_path)[1].lower()
-        
+
         # Extract content based on file type
         content = ""
         if file_extension == '.pdf':
@@ -683,10 +683,10 @@ def process_file_for_vectorstore(file_path: str) -> List[str]:
             content = '\n'.join(texts)
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
-        
+
         if not content.strip():
             raise ValueError("No text content found in document")
-            
+
         # Use chunk settings from config
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=config["vector_store"]["chunk_size"],
@@ -694,22 +694,22 @@ def process_file_for_vectorstore(file_path: str) -> List[str]:
             length_function=len,
             separators=["\n\n", "\n", ".", " ", ""]
         )
-        
+
         # Split text into chunks
         texts = text_splitter.split_text(content)
-        
+
         if not texts:
             raise ValueError("No text chunks were generated from the document")
-            
+
         return texts
-        
+
     except Exception as e:
         logger.error(f"Error processing file for vector store: {str(e)}")
         raise
 
 @app.get("/api/{user}/{project}/files")
 async def list_files(
-    user: str, 
+    user: str,
     project: str,
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
@@ -755,15 +755,15 @@ async def create_file(
 ):
     """
     Create (upload) a new file in the project.
-    
+
     Args:
         user (str): User identifier
         project (str): Project identifier
         file (UploadFile): The file to upload
-        
+
     Returns:
         dict: Information about the processed file
-        
+
     Raises:
         HTTPException: For unsupported file types or processing errors
     """
@@ -773,7 +773,7 @@ async def create_file(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot upload files for another user"
         )
-        
+
     file_path = None
     replaced_existing = False
     try:
@@ -793,7 +793,7 @@ async def create_file(
         # Check if file already exists and get its metadata
         file_path = os.path.join(project_path, file.filename)
         vector_store = get_vector_store(user, project)
-        
+
         # Get all existing documents with this source file
         if vector_store._collection.count() > 0:
             existing_docs = vector_store._collection.get(
@@ -828,17 +828,17 @@ async def create_file(
                 "page_content": chunk,
                 "metadata": {"source": file_path}
             })
-        
+
         # Add documents to vector store
         vector_store.add_texts(
             texts=[doc["page_content"] for doc in documents],
             metadatas=[doc["metadata"] for doc in documents]
         )
-        
+
         # Get final document count
         final_count = vector_store._collection.count()
         logger.info(f"Added {len(texts)} chunks to vector store. Document count: {initial_count} -> {final_count}")
-        
+
         return {
             "filename": file.filename,
             "size": os.path.getsize(file_path),
@@ -847,7 +847,7 @@ async def create_file(
             "final_count": final_count,
             "replaced_existing": replaced_existing
         }
-                        
+
     except HTTPException as he:
         raise he
     except Exception as e:
@@ -863,19 +863,19 @@ async def create_file(
 
 @app.delete("/api/{user}/{project}/files/{filename}")
 async def delete_file(
-    user: str, 
-    project: str, 
+    user: str,
+    project: str,
     filename: str,
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     """
     Delete a file and its content from the vector store.
-    
+
     Args:
         user (str): User identifier
         project (str): Project identifier
         filename (str): Name of the file to delete
-        
+
     Returns:
         dict: Status message
     """
@@ -885,35 +885,35 @@ async def delete_file(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot delete files of another user"
         )
-        
+
     try:
         # Get the project path
         project_path = os.path.join(DATA_DIR, user, project)
         if not os.path.exists(project_path):
             raise HTTPException(status_code=404, detail="Project not found")
-            
+
         # Get the file path
         file_path = os.path.join(project_path, filename)
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="File not found")
-            
+
         # Get the vector store
         vector_store = get_vector_store(user, project)
-        
+
         # Delete the file from disk
         os.remove(file_path)
-        
+
         # Delete the file's content from ChromaDB
         # We need to find all documents that came from this file
         # and delete them from the vector store
         collection = vector_store._collection
         results = collection.get(where={"source": file_path})
-        
+
         if results and results["ids"]:
             collection.delete(ids=results["ids"])
-            
+
         return {"status": "success", "message": f"File {filename} deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -929,19 +929,19 @@ async def delete_file(
 
 @app.post("/api/{user}/{project}/query")
 async def query_rag(
-    query: Query, 
-    user: str, 
+    query: Query,
+    user: str,
     project: str,
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     """
     Process a natural language query using RAG.
-    
+
     Args:
         query (Query): The query to process
         user (str): User identifier
         project (str): Project identifier
-        
+
     Returns:
         dict: The answer and sources
     """
@@ -951,7 +951,7 @@ async def query_rag(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: Cannot query documents of another user"
         )
-        
+
     try:
         if not query.text.strip():
             raise HTTPException(
@@ -960,7 +960,7 @@ async def query_rag(
             )
 
         start_time = time.time()
-        
+
         # Get vector store for this user/project
         vector_store = get_vector_store(user, project, load_documents=True)
         if vector_store._collection.count() == 0:
@@ -975,7 +975,7 @@ async def query_rag(
 
         # Get LLM from cache
         llm = get_llm()
-        
+
         # Define custom prompt template
         template = config["rag"]["qa_template"]
 
@@ -994,11 +994,11 @@ async def query_rag(
 
         # Execute query
         result = qa_chain({"query": query.text})
-        
+
         # Calculate metrics
         end_time = time.time()
         elapsed_seconds = end_time - start_time
-        
+
         # Get token counts from the LLM's last call
         try:
             input_tokens = llm.get_num_tokens(query.text)
@@ -1007,12 +1007,12 @@ async def query_rag(
         except Exception as e:
             logger.warning(f"Failed to get token counts: {str(e)}")
             input_tokens = output_tokens = total_tokens = 0
-        
+
         # Debug log the complete result with metrics
         logger.debug("Query: %s", query.text)
         logger.debug("Answer: %s", result["result"])
         logger.debug("Source documents: %s", [doc.metadata for doc in result["source_documents"]])
-        logger.debug("Metrics - Time: %.2f seconds, Total Tokens: %d (Input: %d, Output: %d)", 
+        logger.debug("Metrics - Time: %.2f seconds, Total Tokens: %d (Input: %d, Output: %d)",
                     elapsed_seconds, total_tokens, input_tokens, output_tokens)
 
         # Format response with deduplication
@@ -1023,10 +1023,10 @@ async def query_rag(
         for doc in result["source_documents"]:
             source_text = doc.page_content.strip()
             source_file = os.path.basename(doc.metadata.get('source', 'Unknown source'))
-            
+
             # Create a unique key for this source using both content and filename
             source_key = f"{source_file}:{source_text}"
-            
+
             # Only add if we haven't seen this exact source before
             if source_key not in seen_sources:
                 seen_sources.add(source_key)
@@ -1037,7 +1037,7 @@ async def query_rag(
                     "preview": source_text[:150] + "..." if len(source_text) > 150 else source_text
                 })
                 source_number += 1
-        
+
         logger.info(f"Successfully processed query with {len(sources)} unique source documents in {elapsed_seconds:.2f} seconds")
         return {
             "answer": result["result"],
@@ -1083,11 +1083,11 @@ if __name__ == "__main__":
         global should_exit
         should_exit = True
         logger.info("Shutdown requested. Stopping server...")
-        
+
         # Clean up multiprocessing resources
         import multiprocessing
         multiprocessing.get_context()._cleanup()
-        
+
         # Clean up LLM cache
         global _llm_cache
         if _llm_cache is not None:
@@ -1095,11 +1095,11 @@ if __name__ == "__main__":
                 _llm_cache.__del__()
             except Exception as e:
                 logger.warning(f"Error cleaning up LLM: {str(e)}")
-        
+
         # Clean up vector store cache
         global _vector_store_cache
         _vector_store_cache.clear()
-        
+
         sys.exit(0)
 
     # Register signal handlers

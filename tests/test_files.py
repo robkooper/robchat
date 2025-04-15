@@ -27,7 +27,7 @@ def test_file_upload():
     """Test successful file upload."""
     token = get_test_token()
     test_file = ("test.txt", "This is a test file.")
-    
+
     response = client.post(
         "/api/test/test_project/files",
         headers={"Authorization": f"Bearer {token}"},
@@ -42,7 +42,7 @@ def test_file_upload():
 # def test_file_download():
 #     """Test successful file download."""
 #     token = get_test_token()
-    
+
 #     # First upload a file
 #     test_file = ("test.txt", "This is a test file.")
 #     upload_response = client.post(
@@ -51,7 +51,7 @@ def test_file_upload():
 #         files={"file": test_file}
 #     )
 #     filename = upload_response.json()["filename"]
-    
+
 #     # Then download it
 #     response = client.get(
 #         f"/api/test/test_project/download/{filename}",
@@ -63,7 +63,7 @@ def test_file_upload():
 def test_file_delete():
     """Test successful file deletion."""
     token = get_test_token()
-    
+
     # First upload a file
     test_file = ("test.txt", "This is a test file.")
     upload_response = client.post(
@@ -72,7 +72,7 @@ def test_file_delete():
         files={"file": test_file}
     )
     filename = upload_response.json()["filename"]
-    
+
     # Then delete it
     response = client.delete(
         f"/api/test/test_project/files/{filename}",
@@ -86,7 +86,7 @@ def test_file_delete():
 def test_invalid_file_upload():
     """Test error handling for invalid file upload."""
     token = get_test_token()
-    
+
     response = client.post(
         "/api/test/test_project/files",
         headers={"Authorization": f"Bearer {token}"},
@@ -99,7 +99,7 @@ def test_invalid_file_upload():
 # def test_nonexistent_file_download():
 #     """Test error handling for downloading nonexistent file."""
 #     token = get_test_token()
-    
+
 #     response = client.get(
 #         "/api/test/test_project/download/nonexistent.txt",
 #         headers={"Authorization": f"Bearer {token}"}
@@ -112,7 +112,7 @@ def test_invalid_file_upload():
 def test_nonexistent_file_delete():
     """Test error handling for deleting nonexistent file."""
     token = get_test_token()
-    
+
     response = client.delete(
         "/api/test/test_project/files/nonexistent.txt",
         headers={"Authorization": f"Bearer {token}"}

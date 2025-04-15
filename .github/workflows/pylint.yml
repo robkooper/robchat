@@ -27,6 +27,5 @@ jobs:
     
     - name: Run pylint
       run: |
-        pylint app.py tests/
         # for now we don't fail the build
-        pylint --exit-zero --fail-under=0.0 app.py tests/ example/
+        pylint --fail-under=7.0 app.py tests/ example/
