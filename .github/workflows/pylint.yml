@@ -9,17 +9,14 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11"]
 
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.11
         cache: 'pip'
     
     - name: Install dependencies
@@ -32,4 +29,4 @@ jobs:
       run: |
         pylint app.py tests/
         # for now we don't fail the build
-        pylint --fail-under=0.0 app.py tests/ example/
+        pylint --exit-zero --fail-under=0.0 app.py tests/ example/

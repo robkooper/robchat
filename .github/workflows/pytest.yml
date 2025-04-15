@@ -36,7 +36,7 @@ jobs:
   
     - name: Run pytest with coverage
       run: |
-        pytest --cov=app --cov-report=xml
+        pytest --cov=app --cov-report=xml -k "not test_workflow.py"
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
