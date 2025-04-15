@@ -58,6 +58,7 @@ import bcrypt
 from passlib.context import CryptContext
 import chromadb
 from chromadb.config import Settings
+import threading
 
 # -------------------------------------------------------------------------------------------------
 # CONFIGURATION
@@ -131,6 +132,67 @@ DATA_DIR = config["data"]["base_directory"]
 
 # Define the prompts
 HUMAN_TEMPLATE = "Question: {question}"
+
+# API Models
+class Query(BaseModel):
+    text: str
+
+class FileList(BaseModel):
+    files: List[str]
+
+class UserProjects(BaseModel):
+    """Model for user projects response."""
+    projects: List[str]  # List of all projects
+    current_project: str
+
+# Initialize FastAPI app
+app = FastAPI(title="RobChat API")
+
+# Setup static paths
+static_path = os.path.join(os.path.dirname(__file__), "static")
+
+# Mount the static files
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global caches
+_llm_cache: Optional[LlamaCpp] = None
+_vector_store_cache: Dict[str, Chroma] = {}  # Key format: "user:project"
+_llm_lock = threading.Lock()  # Lock for thread-safe LLM initialization
+
+def initialize_llm():
+    """Initialize the LLM in a background thread"""
+    global _llm_cache
+    try:
+        logger.info("Starting LLM initialization in background...")
+        with _llm_lock:
+            if _llm_cache is None:  # Double-check pattern
+                _llm_cache = get_llm()
+                logger.info("LLM initialized successfully")
+            else:
+                logger.info("LLM already initialized by another worker")
+    except Exception as e:
+        logger.error(f"Failed to initialize LLM: {str(e)}")
+        # Don't raise here since we're in a thread
+
+async def startup_event():
+    """Start the LLM initialization in a background thread"""
+    import threading
+    thread = threading.Thread(target=initialize_llm)
+    thread.daemon = True  # Make thread daemon so it doesn't prevent shutdown
+    thread.start()
+    logger.info("Started LLM initialization thread")
+
+app.add_event_handler("startup", startup_event)
 
 # -------------------------------------------------------------------------------------------------
 # AUTHENTICATION
@@ -269,10 +331,6 @@ def retry_with_fallback(max_attempts=3):
         return wrapper
     return decorator
 
-# Global caches
-_llm_cache: Optional[LlamaCpp] = None
-_vector_store_cache: Dict[str, Chroma] = {}  # Key format: "user:project"
-
 # Initialize the RAG components
 @retry_with_fallback(max_attempts=3)
 def get_embeddings():
@@ -298,10 +356,15 @@ def get_llm():
         
     try:
         llm_config = config["models"]["llm"]
+        logger.info("Downloading model from Hugging Face...")
         model_path = hf_hub_download(
             repo_id=llm_config["repo_id"],
-            filename=llm_config["filename"]
+            filename=llm_config["filename"],
+            local_files_only=False,  # Ensure we download if not present
+            force_download=False,     # Don't re-download if already present
+            resume_download=True      # Resume interrupted downloads
         )
+        logger.info("Model downloaded, initializing...")
         
         n_gpu_layers = 1 if DEVICE == "mps" else 0
         
@@ -315,6 +378,13 @@ def get_llm():
             n_batch=llm_config["n_batch"],
             verbose=True,
         )
+        
+        # Test the model to ensure it's fully loaded
+        logger.info("Testing model initialization...")
+        test_prompt = "Hello, are you ready?"
+        _llm_cache(test_prompt)
+        logger.info("Model initialization complete")
+        
         return _llm_cache
     except Exception as e:
         logger.error(f"Error initializing LLM: {str(e)}")
@@ -403,51 +473,21 @@ def get_vector_store(user: str, project: str, load_documents: bool = False):
         raise
 
 # -------------------------------------------------------------------------------------------------
-# INITIALIZE FASTAPI APP
-# -------------------------------------------------------------------------------------------------
-
-app = FastAPI(title="RobChat API")
-
-# Setup static paths
-static_path = os.path.join(os.path.dirname(__file__), "static")
-
-# Mount the static files
-if os.path.exists(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# API Models
-class Query(BaseModel):
-    text: str
-
-class FileList(BaseModel):
-    files: List[str]
-
-class UserProjects(BaseModel):
-    """Model for user projects response."""
-    projects: List[str]  # List of all projects
-    current_project: str
-
-# -------------------------------------------------------------------------------------------------
 # WEB PAGES
 # -------------------------------------------------------------------------------------------------
 
 @app.get("/")
 async def read_root():
     """Serve the main application page"""
+    if _llm_cache is None:
+        return FileResponse("static/startup.html")
     return FileResponse("static/login.html")
 
 @app.get("/chat")
 async def read_chat():
     """Serve the chat interface page"""
+    if _llm_cache is None:
+        return FileResponse("static/startup.html")
     return FileResponse("static/chat.html")
 
 # -------------------------------------------------------------------------------------------------
@@ -1043,6 +1083,23 @@ if __name__ == "__main__":
         global should_exit
         should_exit = True
         logger.info("Shutdown requested. Stopping server...")
+        
+        # Clean up multiprocessing resources
+        import multiprocessing
+        multiprocessing.get_context()._cleanup()
+        
+        # Clean up LLM cache
+        global _llm_cache
+        if _llm_cache is not None:
+            try:
+                _llm_cache.__del__()
+            except Exception as e:
+                logger.warning(f"Error cleaning up LLM: {str(e)}")
+        
+        # Clean up vector store cache
+        global _vector_store_cache
+        _vector_store_cache.clear()
+        
         sys.exit(0)
 
     # Register signal handlers

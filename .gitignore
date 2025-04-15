@@ -38,6 +38,7 @@ data/
 *.log
 config.yaml
 users.yaml
+notes.md
 
 # HuggingFace cache
 .cache/
