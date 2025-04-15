@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        fail-fast: false
 
     steps:
     - uses: actions/checkout@v4
@@ -28,6 +29,11 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov
     
+    - name: Configure application
+      run: |
+        copy config.exmaple.yaml config.yaml
+        copy users.exmaple.yaml users.yaml
+  
     - name: Run pytest with coverage
       run: |
         pytest --cov=app --cov-report=xml
