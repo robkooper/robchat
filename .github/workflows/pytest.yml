@@ -31,8 +31,8 @@ jobs:
     
     - name: Configure application
       run: |
-        cp config.exmaple.yaml config.yaml
-        cp users.exmaple.yaml users.yaml
+        cp config.example.yaml config.yaml
+        cp users.example.yaml users.yaml
   
     - name: Run pytest with coverage
       run: |
@@ -42,4 +42,4 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        fail_ci_if_error: true 
+        fail_ci_if_error: true
