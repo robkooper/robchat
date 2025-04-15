@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Parallel pytest workflow with Python 3.9, 3.10, and 3.11 support
   - Pylint workflow with minimum score requirement
   - Test coverage reporting and Codecov integration
+- Added startup page to display during LLM initialization
+- Added proper cleanup handling for multiprocessing resources
+- Added semaphore cleanup in application shutdown
 
 ### Changed
 - Updated README to clarify configuration file setup process
